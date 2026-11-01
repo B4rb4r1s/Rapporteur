@@ -1,0 +1,46 @@
+# Сервис Ollama (ADR-010). Модели лежат во внешнем каталоге OLLAMA_MODELS_DIR.
+# Рабочая сеть внутренняя: исходящего трафика нет, порт наружу не публикуется (spec §2, §10).
+#
+#   OLLAMA_MODELS_DIR=/путь/к/моделям docker compose -f deploy/ollama/compose.yaml up -d
+#   OLLAMA_MODELS_DIR=/путь/к/моделям docker compose -f deploy/ollama/compose.yaml run --rm pull <модель>
+#
+# Сервис pull нужен только на машине с интернетом. В изолированной сети каталог приезжает готовым.
+name: rapporteur-ollama
+
+x-ollama: &ollama
+  image: ollama/ollama:0.40.13@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429
+  user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+  gpus: all
+  volumes:
+    - ${OLLAMA_MODELS_DIR:?укажите каталог с моделями}:/models
+  environment:
+    HOME: /tmp
+    OLLAMA_HOST: 0.0.0.0:11434
+    OLLAMA_MODELS: /models
+    OLLAMA_NO_CLOUD: "1"
+    OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-32768}
+    OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
+    OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+
+services:
+  ollama:
+    <<: *ollama
+    restart: unless-stopped
+    networks: [inference]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+
+  pull:
+    <<: *ollama
+    profiles: [pull]
+    networks: [egress]
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 3; ollama pull \"$0\""]
+
+networks:
+  inference:
+    internal: true
+  egress: {}
