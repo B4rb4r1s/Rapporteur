@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "stage": "report",
+    "stage_version": "1.0.0",
+    "contract_version": "0.1.0",
+    "cache_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "input_hashes": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "config_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "produced_at": "2026-11-01T10:00:00Z",
+    "stub": false
+  },
+  "report_id": "00000000-0000-4000-8000-000000000070",
+  "variables": {
+    "talks_count": 1,
+    "speakers_count": 1
+  },
+  "files": [
+    {
+      "format": "docx",
+      "storage_key": "exports/00000000-0000-4000-8000-000000000071/spravka.docx",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "size_bytes": 40960
+    }
+  ]
+}

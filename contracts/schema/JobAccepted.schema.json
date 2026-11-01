@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Ответ 202 на долгую операцию.",
+  "properties": {
+    "job_id": {
+      "format": "uuid",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "status_url": {
+      "minLength": 1,
+      "title": "Status Url",
+      "type": "string"
+    }
+  },
+  "required": [
+    "job_id",
+    "status_url"
+  ],
+  "title": "JobAccepted",
+  "type": "object",
+  "version": "0.1.0"
+}

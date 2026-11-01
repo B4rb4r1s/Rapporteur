@@ -1,0 +1,175 @@
+{
+  "$defs": {
+    "FragmentKind": {
+      "enum": [
+        "slide",
+        "transcript",
+        "note",
+        "program",
+        "slide_description"
+      ],
+      "title": "FragmentKind",
+      "type": "string"
+    },
+    "LinesLocator": {
+      "additionalProperties": false,
+      "description": "Строки текстового файла, нумерация с единицы, конец включён.",
+      "properties": {
+        "kind": {
+          "const": "lines",
+          "title": "Kind",
+          "type": "string"
+        },
+        "line_end": {
+          "exclusiveMinimum": 0,
+          "title": "Line End",
+          "type": "integer"
+        },
+        "line_start": {
+          "exclusiveMinimum": 0,
+          "title": "Line Start",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "line_start",
+        "line_end"
+      ],
+      "title": "LinesLocator",
+      "type": "object"
+    },
+    "PageLocator": {
+      "additionalProperties": false,
+      "description": "Слайд презентации или страница документа.",
+      "properties": {
+        "kind": {
+          "const": "page",
+          "title": "Kind",
+          "type": "string"
+        },
+        "page_no": {
+          "exclusiveMinimum": 0,
+          "title": "Page No",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "page_no"
+      ],
+      "title": "PageLocator",
+      "type": "object"
+    },
+    "TextOrigin": {
+      "enum": [
+        "extracted",
+        "asr",
+        "vlm",
+        "term_fix",
+        "human"
+      ],
+      "title": "TextOrigin",
+      "type": "string"
+    },
+    "TimeLocator": {
+      "additionalProperties": false,
+      "description": "Отрезок записи, таймкоды от начала файла.",
+      "properties": {
+        "end_ms": {
+          "minimum": 0,
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "time",
+          "title": "Kind",
+          "type": "string"
+        },
+        "start_ms": {
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "start_ms",
+        "end_ms"
+      ],
+      "title": "TimeLocator",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Кэшируемый фрагмент: только файл и локатор, без UUID и меток, поэтому артефакт\nпереиспользуется между конференциями. Текст слайда включает заметки докладчика.",
+  "properties": {
+    "engine_confidence": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Engine Confidence"
+    },
+    "kind": {
+      "$ref": "#/$defs/FragmentKind"
+    },
+    "locator": {
+      "discriminator": {
+        "mapping": {
+          "lines": "#/$defs/LinesLocator",
+          "page": "#/$defs/PageLocator",
+          "time": "#/$defs/TimeLocator"
+        },
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PageLocator"
+        },
+        {
+          "$ref": "#/$defs/TimeLocator"
+        },
+        {
+          "$ref": "#/$defs/LinesLocator"
+        }
+      ],
+      "title": "Locator"
+    },
+    "normalized_text": {
+      "title": "Normalized Text",
+      "type": "string"
+    },
+    "origin": {
+      "$ref": "#/$defs/TextOrigin"
+    },
+    "raw_text": {
+      "title": "Raw Text",
+      "type": "string"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind",
+    "source_sha256",
+    "locator",
+    "raw_text",
+    "normalized_text",
+    "origin",
+    "engine_confidence"
+  ],
+  "title": "FragmentDraft",
+  "type": "object",
+  "version": "0.1.0"
+}

@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "SummaryLine": {
+      "additionalProperties": false,
+      "description": "Предложение сводки или пункт выводов со ссылками на утверждения.",
+      "properties": {
+        "claim_ids": {
+          "items": {
+            "pattern": "^c[1-9][0-9]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Claim Ids",
+          "type": "array"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "claim_ids"
+      ],
+      "title": "SummaryLine",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Ответ шага В. Диапазон числа предложений настраивается и проверяется на шаге Г.",
+  "properties": {
+    "conclusions": {
+      "items": {
+        "$ref": "#/$defs/SummaryLine"
+      },
+      "maxItems": 3,
+      "title": "Conclusions",
+      "type": "array"
+    },
+    "sentences": {
+      "items": {
+        "$ref": "#/$defs/SummaryLine"
+      },
+      "minItems": 1,
+      "title": "Sentences",
+      "type": "array"
+    }
+  },
+  "required": [
+    "sentences",
+    "conclusions"
+  ],
+  "title": "SummaryDraft",
+  "type": "object",
+  "version": "0.1.0"
+}

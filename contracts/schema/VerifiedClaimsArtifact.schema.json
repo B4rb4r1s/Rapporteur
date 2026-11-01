@@ -1,0 +1,270 @@
+{
+  "$defs": {
+    "ArtifactMeta": {
+      "additionalProperties": false,
+      "description": "Служебная часть каждого артефакта. stub явно помечает результат заглушки (spec §17).",
+      "properties": {
+        "cache_key": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Cache Key",
+          "type": "string"
+        },
+        "config_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Config Hash",
+          "type": "string"
+        },
+        "contract_version": {
+          "minLength": 1,
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "produced_at": {
+          "format": "date-time",
+          "title": "Produced At",
+          "type": "string"
+        },
+        "stage": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Stage",
+          "type": "string"
+        },
+        "stage_version": {
+          "minLength": 1,
+          "title": "Stage Version",
+          "type": "string"
+        },
+        "stub": {
+          "title": "Stub",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "stage",
+        "stage_version",
+        "contract_version",
+        "cache_key",
+        "input_hashes",
+        "config_hash",
+        "produced_at",
+        "stub"
+      ],
+      "title": "ArtifactMeta",
+      "type": "object"
+    },
+    "Claim": {
+      "additionalProperties": false,
+      "description": "Утверждение. key адресует его внутри сводки, id — в БД и API.",
+      "properties": {
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^c[1-9][0-9]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "rejected_evidence": {
+          "items": {
+            "$ref": "#/$defs/RejectedEvidence"
+          },
+          "title": "Rejected Evidence",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/ClaimStatus"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ClaimType"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "type",
+        "text",
+        "status",
+        "evidence",
+        "rejected_evidence"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "ClaimStatus": {
+      "description": "rejected — цитата не прошла сверку кодом; verified — прошла, человек ещё не смотрел;\nneeds_human — нужна проверка человеком: текст правили или опора только на текст VLM;\nconfirmed — подтверждено человеком.",
+      "enum": [
+        "rejected",
+        "verified",
+        "needs_human",
+        "confirmed"
+      ],
+      "title": "ClaimStatus",
+      "type": "string"
+    },
+    "ClaimType": {
+      "enum": [
+        "problem",
+        "method",
+        "result",
+        "conclusion",
+        "listener_remark"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "description": "Подтверждённая ссылка. label и quote даёт модель, остальное вычисляет код (ADR-003).",
+      "properties": {
+        "fragment_revision_id": {
+          "format": "uuid",
+          "title": "Fragment Revision Id",
+          "type": "string"
+        },
+        "label": {
+          "pattern": "^(?:[SV](?:[1-9][0-9]*\\.)?[1-9][0-9]*|T(?:[1-9][0-9]*\\.)?[0-9]{2}:[0-9]{2}:[0-9]{2}|N[1-9][0-9]*)$",
+          "title": "Label",
+          "type": "string"
+        },
+        "match_score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Match Score",
+          "type": "number"
+        },
+        "quote": {
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        },
+        "span": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "minimum": 0,
+              "type": "integer"
+            }
+          ],
+          "title": "Span",
+          "type": "array"
+        }
+      },
+      "required": [
+        "label",
+        "quote",
+        "fragment_revision_id",
+        "span",
+        "match_score"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "EvidenceRejection": {
+      "enum": [
+        "label_not_found",
+        "quote_not_found",
+        "below_threshold",
+        "number_mismatch",
+        "negation_mismatch",
+        "too_short"
+      ],
+      "title": "EvidenceRejection",
+      "type": "string"
+    },
+    "RejectedEvidence": {
+      "additionalProperties": false,
+      "description": "Цитата, не прошедшая сверку, с причиной отказа.",
+      "properties": {
+        "best_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Best Score"
+        },
+        "label": {
+          "pattern": "^(?:[SV](?:[1-9][0-9]*\\.)?[1-9][0-9]*|T(?:[1-9][0-9]*\\.)?[0-9]{2}:[0-9]{2}:[0-9]{2}|N[1-9][0-9]*)$",
+          "title": "Label",
+          "type": "string"
+        },
+        "quote": {
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/$defs/EvidenceRejection"
+        }
+      },
+      "required": [
+        "label",
+        "quote",
+        "reason",
+        "best_score"
+      ],
+      "title": "RejectedEvidence",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Шаг Б: утверждения после сверки цитат, в том числе отклонённые с причиной.",
+  "properties": {
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "title": "Claims",
+      "type": "array"
+    },
+    "meta": {
+      "$ref": "#/$defs/ArtifactMeta"
+    },
+    "talk_id": {
+      "format": "uuid",
+      "title": "Talk Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "meta",
+    "talk_id",
+    "claims"
+  ],
+  "title": "VerifiedClaimsArtifact",
+  "type": "object",
+  "version": "0.1.0"
+}

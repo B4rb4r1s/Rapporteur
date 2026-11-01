@@ -1,0 +1,200 @@
+# Каждый случай — правка корректного примера из examples/valid, которая обязана быть отклонена.
+# expect — код ошибки Pydantic; на эти коды опираются воркеры и API.
+- name: span за пределами текста
+  model: TalkSummaryBundle
+  base: TalkSummaryBundle--ok.json
+  set: {summary.claims.0.evidence.0.span: [0, 100000]}
+  expect: span_out_of_range
+- name: неизвестная метка
+  model: TalkSummaryBundle
+  base: TalkSummaryBundle--ok.json
+  set: {summary.claims.0.evidence.0.label: S1.99}
+  expect: unknown_label
+- name: ссылка на фрагмент другого доклада
+  model: TalkSummaryBundle
+  base: TalkSummaryBundle--ok.json
+  set:
+    summary.claims.0.evidence.0.fragment_revision_id: 00000000-0000-4000-8000-000000000999
+    summary.input_revision_ids.0: 00000000-0000-4000-8000-000000000999
+  expect: foreign_fragment
+- name: пакет другого доклада
+  model: TalkSummaryBundle
+  base: TalkSummaryBundle--ok.json
+  set: {pack.talk_id: 00000000-0000-4000-8000-000000000011}
+  expect: talk_mismatch
+- name: ссылка вне входа сводки
+  model: Summary
+  base: Summary--ready.json
+  set: {claims.0.evidence.0.fragment_revision_id: 00000000-0000-4000-8000-000000000999}
+  expect: evidence_revision_not_in_input
+- name: предложение без утверждений
+  model: SummaryDraft
+  base: SummaryDraft--basic.json
+  set: {sentences.0.claim_ids: []}
+  expect: too_short
+- name: предложение с неизвестным утверждением
+  model: Summary
+  base: Summary--ready.json
+  set: {sentences.0.claim_ids: [c99]}
+  expect: unknown_claim
+- name: предложение опирается на отклонённое утверждение
+  model: Summary
+  base: Summary--ready.json
+  set: {sentences.0.claim_ids: [c4]}
+  expect: rejected_claim
+- name: реплика слушателя в тексте сводки
+  model: Summary
+  base: Summary--ready.json
+  set: {sentences.0.claim_ids: [c6]}
+  expect: listener_remark_in_text
+- name: вывод опирается не на вывод докладчика
+  model: Summary
+  base: Summary--ready.json
+  set: {conclusions.0.claim_ids: [c3]}
+  expect: conclusion_without_conclusion_claim
+- name: больше трёх пунктов выводов
+  model: SummaryDraft
+  base: SummaryDraft--basic.json
+  set:
+    conclusions:
+      - {text: "а", claim_ids: [c1]}
+      - {text: "б", claim_ids: [c1]}
+      - {text: "в", claim_ids: [c1]}
+      - {text: "г", claim_ids: [c1]}
+  expect: too_long
+- name: заметка в выводах докладчика
+  model: FactsDraft
+  base: FactsDraft--research.json
+  set: {conclusions.0.evidence.0.label: N1}
+  expect: note_outside_listener_remarks
+- name: реплика слушателя не из заметок
+  model: FactsDraft
+  base: FactsDraft--research.json
+  set: {listener_remarks.0.evidence.0.label: S1.7}
+  expect: listener_remark_without_note
+- name: нет выводов и нет причины
+  model: FactsDraft
+  base: FactsDraft--review-no-conclusions.json
+  set: {conclusions_absent_reason: null}
+  expect: conclusions_reason_mismatch
+- name: опора только на VLM без проверки человеком
+  model: Summary
+  base: Summary--ready.json
+  set:
+    claims.2.evidence.0.label: V7
+  expect: vlm_only_not_verified
+- name: дубль метки в пакете
+  model: TalkFragmentPack
+  base: TalkFragmentPack--two-decks.json
+  set: {fragments.1.label: S1.1, fragments.1.locator.page_no: 1}
+  expect: duplicate_label
+- name: метка не совпадает с номером слайда
+  model: TalkFragmentPack
+  base: TalkFragmentPack--two-decks.json
+  set: {fragments.1.label: S1.8}
+  expect: label_mismatch
+- name: метка не совпадает с таймкодом
+  model: TalkFragmentPack
+  base: TalkFragmentPack--with-transcript.json
+  set: {fragments.1.label: T1.00:12:35}
+  expect: label_mismatch
+- name: один номер источника у двух файлов
+  model: TalkFragmentPack
+  base: TalkFragmentPack--two-decks.json
+  set: {fragments.3.label: S1.2}
+  expect: ambiguous_source
+- name: метка без номера при двух презентациях
+  model: TalkFragmentPack
+  base: TalkFragmentPack--two-decks.json
+  set: {fragments.3.label: S2}
+  expect: ambiguous_source
+- name: программа в пакете
+  model: TalkFragmentPack
+  base: TalkFragmentPack--two-decks.json
+  set: {fragments.1.kind: program}
+  expect: program_in_pack
+- name: текст VLM во фрагменте слайда
+  model: FragmentDraft
+  base: FragmentDraft--slide.json
+  set: {origin: vlm}
+  expect: origin_mismatch
+- name: локатор не подходит к виду фрагмента
+  model: FragmentDraft
+  base: FragmentDraft--slide.json
+  set: {kind: transcript, origin: asr}
+  expect: locator_mismatch
+- name: правка человека без автора
+  model: FragmentRevision
+  base: FragmentRevision--human-edit.json
+  set: {edited_by: null}
+  expect: edit_author_mismatch
+- name: недостаточно информации без названия
+  model: Talk
+  base: Talk--insufficient-data.json
+  set: {title: null}
+  expect: insufficient_without_title
+- name: отрезок доклада без доклада
+  model: Segment
+  base: Segment--talk.json
+  set: {talk_id: null}
+  expect: segment_without_talk
+- name: служебный отрезок с докладом
+  model: Segment
+  base: Segment--service.json
+  set: {talk_id: 00000000-0000-4000-8000-000000000010}
+  expect: service_segment_with_talk
+- name: пустой отрезок
+  model: Segment
+  base: Segment--talk.json
+  set: {end_ms: 180000}
+  expect: empty_interval
+- name: конец конференции раньше начала
+  model: Conference
+  base: Conference--basic.json
+  set: {end_date: "2026-10-01"}
+  expect: dates_out_of_order
+- name: время не в UTC
+  model: FragmentRevision
+  base: FragmentRevision--extracted.json
+  set: {created_at: "2026-11-01T13:00:00+03:00"}
+  expect: not_utc
+- name: лишнее поле
+  model: Talk
+  base: Talk--matched.json
+  set: {speaker: "Иванов"}
+  expect: extra_forbidden
+- name: этап конференции зависит от этапа доклада
+  model: PipelineGraph
+  base: PipelineGraph--phase1.json
+  set: {stages.0.needs: [summary]}
+  expect: talk_scope_fan_in
+- name: цикл среди этапов доклада
+  model: PipelineGraph
+  base: PipelineGraph--phase1.json
+  set: {stages.3.needs: [slides, notes, summary]}
+  expect: stage_cycle
+- name: ссылка на неизвестный этап
+  model: PipelineGraph
+  base: PipelineGraph--phase1.json
+  set: {stages.1.needs: [transcribe]}
+  expect: unknown_stage
+- name: секция реестра не существует
+  model: ConferenceRegistry
+  base: ConferenceRegistry--basic.yaml
+  set: {talks.0.section: s9}
+  expect: unknown_section
+- name: не состоявшийся доклад в справке
+  model: ReportInput
+  base: ReportInput--with-skipped.json
+  set: {talks.0.status: not_held}
+  expect: talk_not_reportable
+- name: выборка не совпадает с докладами
+  model: ReportInput
+  base: ReportInput--with-skipped.json
+  set: {skipped: []}
+  expect: selection_mismatch
+- name: непроверенные доклады без подтверждения
+  model: ReportInput
+  base: ReportInput--with-skipped.json
+  set: {unreviewed_confirmed: false}
+  expect: unreviewed_not_confirmed

@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "stage": "asr",
+    "stage_version": "1.0.0",
+    "contract_version": "0.1.0",
+    "cache_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "input_hashes": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "config_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "produced_at": "2026-11-01T10:00:00Z",
+    "stub": false
+  },
+  "source_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "engine": "stub",
+  "segments": [
+    {
+      "start_ms": 754000,
+      "end_ms": 756000,
+      "text": "вот здесь",
+      "confidence": null,
+      "speaker": null,
+      "low_quality": false,
+      "words": [
+        {
+          "start_ms": 754000,
+          "end_ms": 754400,
+          "text": "вот",
+          "confidence": null
+        },
+        {
+          "start_ms": 754500,
+          "end_ms": 755000,
+          "text": "здесь",
+          "confidence": null
+        }
+      ]
+    }
+  ],
+  "fragments": [
+    {
+      "kind": "transcript",
+      "source_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "locator": {
+        "kind": "time",
+        "start_ms": 754000,
+        "end_ms": 800000
+      },
+      "raw_text": "вот здесь",
+      "normalized_text": "вот здесь",
+      "origin": "asr",
+      "engine_confidence": null
+    }
+  ]
+}
