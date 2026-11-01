@@ -13,7 +13,7 @@ from rapporteur_contracts import (
     TalkSummaryBundle,
     can_transition,
 )
-from rapporteur_contracts.enums import ApiErrorCode, TalkStatus
+from rapporteur_contracts.enums import ApiErrorCode, InferenceEngine, TalkStatus
 from rapporteur_contracts.export import bundle_schema
 
 
@@ -54,6 +54,10 @@ def test_amended_transitions_are_allowed(current: TalkStatus, target: TalkStatus
 )
 def test_forbidden_transitions_are_rejected(current: TalkStatus, target: TalkStatus) -> None:
     assert not can_transition(current, target)
+
+
+def test_engine_list_has_no_vllm() -> None:
+    assert {engine.value for engine in InferenceEngine} == {"ollama", "stub"}
 
 
 def test_every_api_error_has_http_status() -> None:

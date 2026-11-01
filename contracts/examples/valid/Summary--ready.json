@@ -3,7 +3,7 @@
   "talk_id": "00000000-0000-4000-8000-000000000010",
   "version": 1,
   "status": "ready",
-  "profile": "base-vllm",
+  "profile": "base",
   "prompt_versions": {
     "facts": "v1",
     "summary": "v1"

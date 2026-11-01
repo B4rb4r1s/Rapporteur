@@ -1,14 +1,14 @@
 {
-  "name": "local-ollama",
+  "name": "base",
   "engine": "ollama",
-  "model": "qwen3.6:9b",
+  "model": "qwen3.6:27b-bf16",
   "weights_revision": "sha256:0000000",
-  "quantization": "q4",
+  "quantization": "bf16",
   "generation": {
     "temperature": 0.1,
     "reasoning": true,
     "max_tokens": 8000,
-    "context_tokens": 8192
+    "context_tokens": 32000
   },
   "prompt_version": "v1",
   "stages": [

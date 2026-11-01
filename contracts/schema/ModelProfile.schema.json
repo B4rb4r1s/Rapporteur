@@ -34,7 +34,6 @@
     },
     "InferenceEngine": {
       "enum": [
-        "vllm",
         "ollama",
         "stub"
       ],

@@ -148,7 +148,6 @@ class HumanGate(StrEnum):
 
 
 class InferenceEngine(StrEnum):
-    VLLM = "vllm"
     OLLAMA = "ollama"
     STUB = "stub"
 

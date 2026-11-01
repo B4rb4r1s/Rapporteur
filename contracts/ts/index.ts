@@ -81,7 +81,7 @@ export type HumanGate = "binding_confirmed" | "boundaries_confirmed";
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
  * via the `definition` "InferenceEngine".
  */
-export type InferenceEngine = "vllm" | "ollama" | "stub";
+export type InferenceEngine = "ollama" | "stub";
 /**
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
  * via the `definition` "ResourceKind".
