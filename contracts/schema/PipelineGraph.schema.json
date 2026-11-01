@@ -1,0 +1,104 @@
+{
+  "$defs": {
+    "HumanGate": {
+      "enum": [
+        "binding_confirmed",
+        "boundaries_confirmed"
+      ],
+      "title": "HumanGate",
+      "type": "string"
+    },
+    "ResourceKind": {
+      "enum": [
+        "cpu",
+        "gpu"
+      ],
+      "title": "ResourceKind",
+      "type": "string"
+    },
+    "StageScope": {
+      "enum": [
+        "conference",
+        "file",
+        "talk"
+      ],
+      "title": "StageScope",
+      "type": "string"
+    },
+    "StageSpec": {
+      "additionalProperties": false,
+      "description": "Этап конвейера. Этап с областью talk разворачивается в задачу на каждый доклад.",
+      "properties": {
+        "gates": {
+          "items": {
+            "$ref": "#/$defs/HumanGate"
+          },
+          "title": "Gates",
+          "type": "array"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "needs": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Needs",
+          "type": "array"
+        },
+        "output": {
+          "minLength": 1,
+          "title": "Output",
+          "type": "string"
+        },
+        "resource": {
+          "$ref": "#/$defs/ResourceKind"
+        },
+        "scope": {
+          "$ref": "#/$defs/StageScope"
+        },
+        "uses_llm": {
+          "title": "Uses Llm",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "scope",
+        "resource",
+        "needs",
+        "gates",
+        "uses_llm",
+        "output"
+      ],
+      "title": "StageSpec",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "stages": {
+      "items": {
+        "$ref": "#/$defs/StageSpec"
+      },
+      "title": "Stages",
+      "type": "array"
+    },
+    "version": {
+      "exclusiveMinimum": 0,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "version",
+    "stages"
+  ],
+  "title": "PipelineGraph",
+  "type": "object",
+  "version": "0.1.0"
+}

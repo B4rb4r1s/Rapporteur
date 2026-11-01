@@ -1,0 +1,157 @@
+{
+  "$defs": {
+    "PersonRole": {
+      "enum": [
+        "speaker",
+        "coauthor"
+      ],
+      "title": "PersonRole",
+      "type": "string"
+    },
+    "TalkParticipant": {
+      "additionalProperties": false,
+      "properties": {
+        "order": {
+          "exclusiveMinimum": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "person_id": {
+          "format": "uuid",
+          "title": "Person Id",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/PersonRole"
+        }
+      },
+      "required": [
+        "person_id",
+        "role",
+        "order"
+      ],
+      "title": "TalkParticipant",
+      "type": "object"
+    },
+    "TalkStatus": {
+      "enum": [
+        "draft",
+        "matched",
+        "processed",
+        "reviewed",
+        "stale",
+        "not_held",
+        "insufficient_data"
+      ],
+      "title": "TalkStatus",
+      "type": "string"
+    },
+    "TalkType": {
+      "enum": [
+        "исследовательский",
+        "обзорный",
+        "прикладной",
+        "иное"
+      ],
+      "title": "TalkType",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Доклад реестра. Название и докладчики в справку идут отсюда, а не из ответа модели.",
+  "properties": {
+    "date": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Date"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "match_confidence": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Match Confidence"
+    },
+    "order": {
+      "exclusiveMinimum": 0,
+      "title": "Order",
+      "type": "integer"
+    },
+    "participants": {
+      "items": {
+        "$ref": "#/$defs/TalkParticipant"
+      },
+      "title": "Participants",
+      "type": "array"
+    },
+    "section_id": {
+      "format": "uuid",
+      "title": "Section Id",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/TalkStatus"
+    },
+    "talk_type": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TalkType"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Title"
+    },
+    "version": {
+      "exclusiveMinimum": 0,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "section_id",
+    "order",
+    "title",
+    "date",
+    "talk_type",
+    "status",
+    "match_confidence",
+    "participants",
+    "version"
+  ],
+  "title": "Talk",
+  "type": "object",
+  "version": "0.1.0"
+}

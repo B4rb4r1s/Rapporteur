@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "ReportSelection": {
+      "additionalProperties": false,
+      "description": "talk_ids — итоговый список докладов; days и section_ids хранят выбор пользователя.",
+      "properties": {
+        "days": {
+          "items": {
+            "format": "date",
+            "type": "string"
+          },
+          "title": "Days",
+          "type": "array"
+        },
+        "section_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Section Ids",
+          "type": "array"
+        },
+        "talk_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Talk Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "days",
+        "section_ids",
+        "talk_ids"
+      ],
+      "title": "ReportSelection",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "author_id": {
+      "format": "uuid",
+      "title": "Author Id",
+      "type": "string"
+    },
+    "conference_id": {
+      "format": "uuid",
+      "title": "Conference Id",
+      "type": "string"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "selection": {
+      "$ref": "#/$defs/ReportSelection"
+    },
+    "template_version": {
+      "minLength": 1,
+      "title": "Template Version",
+      "type": "string"
+    },
+    "version": {
+      "exclusiveMinimum": 0,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "author_id",
+    "conference_id",
+    "selection",
+    "template_version",
+    "version"
+  ],
+  "title": "Report",
+  "type": "object",
+  "version": "0.1.0"
+}

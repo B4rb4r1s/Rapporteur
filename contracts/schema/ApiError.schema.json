@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "ApiErrorCode": {
+      "enum": [
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "version_conflict",
+        "payload_too_large",
+        "unsupported_media_type",
+        "validation_error",
+        "rate_limited",
+        "internal_error"
+      ],
+      "title": "ApiErrorCode",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Единый формат ошибки.",
+  "properties": {
+    "code": {
+      "$ref": "#/$defs/ApiErrorCode"
+    },
+    "details": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Details"
+    },
+    "message": {
+      "minLength": 1,
+      "title": "Message",
+      "type": "string"
+    },
+    "request_id": {
+      "minLength": 1,
+      "title": "Request Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "details",
+    "request_id"
+  ],
+  "title": "ApiError",
+  "type": "object",
+  "version": "0.1.0"
+}

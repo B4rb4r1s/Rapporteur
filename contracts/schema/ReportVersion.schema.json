@@ -1,0 +1,370 @@
+{
+  "$defs": {
+    "ReportFile": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/ReportFormat"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "storage_key": {
+          "minLength": 1,
+          "title": "Storage Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "storage_key",
+        "sha256",
+        "size_bytes"
+      ],
+      "title": "ReportFile",
+      "type": "object"
+    },
+    "ReportFormat": {
+      "enum": [
+        "md",
+        "docx",
+        "pdf"
+      ],
+      "title": "ReportFormat",
+      "type": "string"
+    },
+    "ReportInput": {
+      "additionalProperties": false,
+      "description": "Снимок входных данных сборки. Хранится в версии справки.",
+      "properties": {
+        "conference_title": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Conference Title"
+        },
+        "organizer": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Organizer"
+        },
+        "period_end": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Period End"
+        },
+        "period_start": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Period Start"
+        },
+        "place": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Place"
+        },
+        "selection": {
+          "$ref": "#/$defs/ReportSelection"
+        },
+        "skipped": {
+          "items": {
+            "$ref": "#/$defs/SkippedTalk"
+          },
+          "title": "Skipped",
+          "type": "array"
+        },
+        "talks": {
+          "items": {
+            "$ref": "#/$defs/ReportTalk"
+          },
+          "title": "Talks",
+          "type": "array"
+        },
+        "template_version": {
+          "minLength": 1,
+          "title": "Template Version",
+          "type": "string"
+        },
+        "unreviewed_confirmed": {
+          "title": "Unreviewed Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "conference_title",
+        "period_start",
+        "period_end",
+        "place",
+        "organizer",
+        "selection",
+        "talks",
+        "skipped",
+        "template_version",
+        "unreviewed_confirmed"
+      ],
+      "title": "ReportInput",
+      "type": "object"
+    },
+    "ReportSelection": {
+      "additionalProperties": false,
+      "description": "talk_ids — итоговый список докладов; days и section_ids хранят выбор пользователя.",
+      "properties": {
+        "days": {
+          "items": {
+            "format": "date",
+            "type": "string"
+          },
+          "title": "Days",
+          "type": "array"
+        },
+        "section_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Section Ids",
+          "type": "array"
+        },
+        "talk_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Talk Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "days",
+        "section_ids",
+        "talk_ids"
+      ],
+      "title": "ReportSelection",
+      "type": "object"
+    },
+    "ReportTalk": {
+      "additionalProperties": false,
+      "description": "Доклад в справке. Название и докладчики — из реестра, текст — из сводки.",
+      "properties": {
+        "affiliations": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Affiliations",
+          "type": "array"
+        },
+        "conclusions": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Conclusions",
+          "type": "array"
+        },
+        "section_title": {
+          "minLength": 1,
+          "title": "Section Title",
+          "type": "string"
+        },
+        "speakers": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Speakers",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/TalkStatus"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "talk_id": {
+          "format": "uuid",
+          "title": "Talk Id",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "talk_id",
+        "section_title",
+        "title",
+        "speakers",
+        "affiliations",
+        "status",
+        "summary",
+        "conclusions"
+      ],
+      "title": "ReportTalk",
+      "type": "object"
+    },
+    "ReportVariables": {
+      "additionalProperties": false,
+      "description": "Значения, которые считает код, а не модель.",
+      "properties": {
+        "speakers_count": {
+          "minimum": 0,
+          "title": "Speakers Count",
+          "type": "integer"
+        },
+        "talks_count": {
+          "minimum": 0,
+          "title": "Talks Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "talks_count",
+        "speakers_count"
+      ],
+      "title": "ReportVariables",
+      "type": "object"
+    },
+    "SkippedTalk": {
+      "additionalProperties": false,
+      "description": "Выбранный доклад, который не вошёл в справку. Показывается пользователю.",
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/TalkStatus"
+        },
+        "talk_id": {
+          "format": "uuid",
+          "title": "Talk Id",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Title"
+        }
+      },
+      "required": [
+        "talk_id",
+        "title",
+        "status"
+      ],
+      "title": "SkippedTalk",
+      "type": "object"
+    },
+    "TalkStatus": {
+      "enum": [
+        "draft",
+        "matched",
+        "processed",
+        "reviewed",
+        "stale",
+        "not_held",
+        "insufficient_data"
+      ],
+      "title": "TalkStatus",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/ReportFile"
+      },
+      "title": "Files",
+      "type": "array"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "input": {
+      "$ref": "#/$defs/ReportInput"
+    },
+    "number": {
+      "exclusiveMinimum": 0,
+      "title": "Number",
+      "type": "integer"
+    },
+    "report_id": {
+      "format": "uuid",
+      "title": "Report Id",
+      "type": "string"
+    },
+    "variables": {
+      "$ref": "#/$defs/ReportVariables"
+    }
+  },
+  "required": [
+    "id",
+    "report_id",
+    "number",
+    "input",
+    "variables",
+    "files",
+    "created_at"
+  ],
+  "title": "ReportVersion",
+  "type": "object",
+  "version": "0.1.0"
+}

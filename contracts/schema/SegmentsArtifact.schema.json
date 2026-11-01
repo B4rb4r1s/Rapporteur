@@ -1,0 +1,180 @@
+{
+  "$defs": {
+    "ArtifactMeta": {
+      "additionalProperties": false,
+      "description": "Служебная часть каждого артефакта. stub явно помечает результат заглушки (spec §17).",
+      "properties": {
+        "cache_key": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Cache Key",
+          "type": "string"
+        },
+        "config_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Config Hash",
+          "type": "string"
+        },
+        "contract_version": {
+          "minLength": 1,
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "produced_at": {
+          "format": "date-time",
+          "title": "Produced At",
+          "type": "string"
+        },
+        "stage": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Stage",
+          "type": "string"
+        },
+        "stage_version": {
+          "minLength": 1,
+          "title": "Stage Version",
+          "type": "string"
+        },
+        "stub": {
+          "title": "Stub",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "stage",
+        "stage_version",
+        "contract_version",
+        "cache_key",
+        "input_hashes",
+        "config_hash",
+        "produced_at",
+        "stub"
+      ],
+      "title": "ArtifactMeta",
+      "type": "object"
+    },
+    "Segment": {
+      "additionalProperties": false,
+      "description": "Отрезок записи. Таймкоды абсолютные, от начала файла.",
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Confidence"
+        },
+        "confirmed": {
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "end_ms": {
+          "minimum": 0,
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/SegmentKind"
+        },
+        "source_file_id": {
+          "format": "uuid",
+          "title": "Source File Id",
+          "type": "string"
+        },
+        "start_ms": {
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "integer"
+        },
+        "talk_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Talk Id"
+        }
+      },
+      "required": [
+        "id",
+        "source_file_id",
+        "start_ms",
+        "end_ms",
+        "talk_id",
+        "kind",
+        "confidence",
+        "confirmed"
+      ],
+      "title": "Segment",
+      "type": "object"
+    },
+    "SegmentKind": {
+      "enum": [
+        "talk",
+        "qa",
+        "service"
+      ],
+      "title": "SegmentKind",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "segments.json, этап 6.5. unmatched_talk_ids — кандидаты в «не состоялся».",
+  "properties": {
+    "conference_id": {
+      "format": "uuid",
+      "title": "Conference Id",
+      "type": "string"
+    },
+    "meta": {
+      "$ref": "#/$defs/ArtifactMeta"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/Segment"
+      },
+      "title": "Segments",
+      "type": "array"
+    },
+    "unmatched_talk_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Unmatched Talk Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "meta",
+    "conference_id",
+    "segments",
+    "unmatched_talk_ids"
+  ],
+  "title": "SegmentsArtifact",
+  "type": "object",
+  "version": "0.1.0"
+}

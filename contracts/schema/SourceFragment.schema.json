@@ -1,0 +1,148 @@
+{
+  "$defs": {
+    "FragmentKind": {
+      "enum": [
+        "slide",
+        "transcript",
+        "note",
+        "program",
+        "slide_description"
+      ],
+      "title": "FragmentKind",
+      "type": "string"
+    },
+    "LinesLocator": {
+      "additionalProperties": false,
+      "description": "Строки текстового файла, нумерация с единицы, конец включён.",
+      "properties": {
+        "kind": {
+          "const": "lines",
+          "title": "Kind",
+          "type": "string"
+        },
+        "line_end": {
+          "exclusiveMinimum": 0,
+          "title": "Line End",
+          "type": "integer"
+        },
+        "line_start": {
+          "exclusiveMinimum": 0,
+          "title": "Line Start",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "line_start",
+        "line_end"
+      ],
+      "title": "LinesLocator",
+      "type": "object"
+    },
+    "PageLocator": {
+      "additionalProperties": false,
+      "description": "Слайд презентации или страница документа.",
+      "properties": {
+        "kind": {
+          "const": "page",
+          "title": "Kind",
+          "type": "string"
+        },
+        "page_no": {
+          "exclusiveMinimum": 0,
+          "title": "Page No",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "page_no"
+      ],
+      "title": "PageLocator",
+      "type": "object"
+    },
+    "TimeLocator": {
+      "additionalProperties": false,
+      "description": "Отрезок записи, таймкоды от начала файла.",
+      "properties": {
+        "end_ms": {
+          "minimum": 0,
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "time",
+          "title": "Kind",
+          "type": "string"
+        },
+        "start_ms": {
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "start_ms",
+        "end_ms"
+      ],
+      "title": "TimeLocator",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Фрагмент конференции. Метки здесь нет: её назначает сборка пакета.",
+  "properties": {
+    "conference_id": {
+      "format": "uuid",
+      "title": "Conference Id",
+      "type": "string"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/FragmentKind"
+    },
+    "locator": {
+      "discriminator": {
+        "mapping": {
+          "lines": "#/$defs/LinesLocator",
+          "page": "#/$defs/PageLocator",
+          "time": "#/$defs/TimeLocator"
+        },
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PageLocator"
+        },
+        {
+          "$ref": "#/$defs/TimeLocator"
+        },
+        {
+          "$ref": "#/$defs/LinesLocator"
+        }
+      ],
+      "title": "Locator"
+    },
+    "source_file_id": {
+      "format": "uuid",
+      "title": "Source File Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "conference_id",
+    "source_file_id",
+    "kind",
+    "locator"
+  ],
+  "title": "SourceFragment",
+  "type": "object",
+  "version": "0.1.0"
+}

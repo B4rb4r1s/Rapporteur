@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "stage": "notes",
+    "stage_version": "1.0.0",
+    "contract_version": "0.1.0",
+    "cache_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "input_hashes": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "config_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "produced_at": "2026-11-01T10:00:00Z",
+    "stub": false
+  },
+  "source_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "encoding": "cp1251",
+  "encoding_confident": false,
+  "fragments": [
+    {
+      "kind": "note",
+      "source_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "locator": {
+        "kind": "lines",
+        "line_start": 1,
+        "line_end": 2
+      },
+      "raw_text": "Из зала спросили про холодный старт. Докладчик ответил, что он не исследовался.",
+      "normalized_text": "Из зала спросили про холодный старт. Докладчик ответил, что он не исследовался.",
+      "origin": "extracted",
+      "engine_confidence": null
+    }
+  ]
+}

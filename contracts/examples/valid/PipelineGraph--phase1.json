@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "stages": [
+    {
+      "name": "inventory",
+      "scope": "conference",
+      "resource": "cpu",
+      "needs": [],
+      "gates": [],
+      "uses_llm": false,
+      "output": "InventoryArtifact"
+    },
+    {
+      "name": "slides",
+      "scope": "file",
+      "resource": "cpu",
+      "needs": [
+        "inventory"
+      ],
+      "gates": [],
+      "uses_llm": false,
+      "output": "SlidesArtifact"
+    },
+    {
+      "name": "notes",
+      "scope": "file",
+      "resource": "cpu",
+      "needs": [
+        "inventory"
+      ],
+      "gates": [],
+      "uses_llm": false,
+      "output": "NotesArtifact"
+    },
+    {
+      "name": "facts",
+      "scope": "talk",
+      "resource": "gpu",
+      "needs": [
+        "slides",
+        "notes"
+      ],
+      "gates": [
+        "binding_confirmed"
+      ],
+      "uses_llm": true,
+      "output": "FactsArtifact"
+    },
+    {
+      "name": "verify",
+      "scope": "talk",
+      "resource": "cpu",
+      "needs": [
+        "facts"
+      ],
+      "gates": [],
+      "uses_llm": false,
+      "output": "VerifiedClaimsArtifact"
+    },
+    {
+      "name": "summary",
+      "scope": "talk",
+      "resource": "gpu",
+      "needs": [
+        "verify"
+      ],
+      "gates": [],
+      "uses_llm": true,
+      "output": "SummaryArtifact"
+    }
+  ]
+}

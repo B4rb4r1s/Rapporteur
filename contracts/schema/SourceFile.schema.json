@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "FileKind": {
+      "enum": [
+        "presentation",
+        "audio",
+        "video",
+        "notes",
+        "program"
+      ],
+      "title": "FileKind",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Файл конференции. Оригинал на томе общий по SHA-256, эта запись — у каждой своя.",
+  "properties": {
+    "conference_id": {
+      "format": "uuid",
+      "title": "Conference Id",
+      "type": "string"
+    },
+    "duration_ms": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Duration Ms"
+    },
+    "encoding": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Encoding"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/FileKind"
+    },
+    "media_type": {
+      "minLength": 1,
+      "title": "Media Type",
+      "type": "string"
+    },
+    "original_name": {
+      "minLength": 1,
+      "title": "Original Name",
+      "type": "string"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sha256",
+      "type": "string"
+    },
+    "size_bytes": {
+      "minimum": 0,
+      "title": "Size Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "conference_id",
+    "sha256",
+    "original_name",
+    "kind",
+    "media_type",
+    "size_bytes",
+    "duration_ms",
+    "encoding"
+  ],
+  "title": "SourceFile",
+  "type": "object",
+  "version": "0.1.0"
+}

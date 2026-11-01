@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "stage": "inventory",
+    "stage_version": "1.0.0",
+    "contract_version": "0.1.0",
+    "cache_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "input_hashes": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "config_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "produced_at": "2026-11-01T10:00:00Z",
+    "stub": false
+  },
+  "files": [
+    {
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "original_name": "доклад.pptx",
+      "kind": "presentation",
+      "media_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "size_bytes": 2048576,
+      "duration_ms": null,
+      "encoding": null
+    }
+  ],
+  "failures": [
+    {
+      "original_name": "защищённый.pdf",
+      "code": "encrypted_file",
+      "message": "Файл защищён паролем"
+    }
+  ]
+}
