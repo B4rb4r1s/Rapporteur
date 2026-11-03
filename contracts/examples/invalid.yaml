@@ -178,6 +178,16 @@
   base: PipelineGraph--phase1.json
   set: {stages.1.needs: [transcribe]}
   expect: unknown_stage
+- name: этап файла без видов файлов
+  model: PipelineGraph
+  base: PipelineGraph--phase1.json
+  set: {stages.1.file_kinds: []}
+  expect: file_kinds_mismatch
+- name: этап доклада с видами файлов
+  model: PipelineGraph
+  base: PipelineGraph--phase1.json
+  set: {stages.3.file_kinds: [notes]}
+  expect: file_kinds_mismatch
 - name: секция реестра не существует
   model: ConferenceRegistry
   base: ConferenceRegistry--basic.yaml

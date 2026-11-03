@@ -1,0 +1,89 @@
+# Граф этапов конвейера (ADR-009, spec §6). Порядок этапов задают данные, а не код воркеров.
+# Формат — модель PipelineGraph из contracts/, правила исполнения — ADR-009, раздел «Семантика».
+#
+# Коротко:
+# - needs: этап доклада ждёт этапы того же доклада, файлы этого доклада и этапы конференции;
+#   этап конференции ждёт все файлы конференции подходящих видов.
+# - gates: проверки человека; boundaries_confirmed пройдена сама, если в конференции нет записей.
+# - file_kinds: этап file запускается на каждый такой файл; этап конференции со списком нужен,
+#   только если такие файлы есть.
+# - Этапы Ф2–Ф3 (asr, segment) пока без реализации: в профиле dev работают заглушки,
+#   в профиле gpu они не запускаются на настоящих данных.
+version: 1
+stages:
+  # 6.1. Хэши, типы по содержимому, длительность, кодировка.
+  - name: inventory
+    scope: conference
+    resource: cpu
+    needs: []
+    gates: []
+    uses_llm: false
+    output: InventoryArtifact
+
+  # 6.2. Текст слайдов, PNG, титульные данные, словарь доклада.
+  - name: slides
+    scope: file
+    file_kinds: [presentation]
+    resource: cpu
+    needs: [inventory]
+    gates: []
+    uses_llm: false
+    output: SlidesArtifact
+
+  # Заметки слушателей: блоки строк, кодировка.
+  - name: notes
+    scope: file
+    file_kinds: [notes]
+    resource: cpu
+    needs: [inventory]
+    gates: []
+    uses_llm: false
+    output: NotesArtifact
+
+  # 6.3–6.4, Ф2. Предобработка звука, VAD и распознавание речи.
+  - name: asr
+    scope: file
+    file_kinds: [audio, video]
+    resource: gpu
+    needs: [inventory]
+    gates: []
+    uses_llm: false
+    output: TranscriptArtifact
+
+  # 6.5, Ф3. Разбиение записей на доклады: слайды, паузы, объявления ведущего (LLM по окнам).
+  # Единственный этап с LLM шире доклада: из окон берутся только служебные сведения (spec §3, п. 1).
+  - name: segment
+    scope: conference
+    file_kinds: [audio, video]
+    resource: gpu
+    needs: [slides, asr]
+    gates: [binding_confirmed]
+    uses_llm: true
+    output: SegmentsArtifact
+
+  # 6.7, шаг А. Факты и цитаты из пакета фрагментов одного доклада.
+  - name: facts
+    scope: talk
+    resource: gpu
+    needs: [slides, notes, asr, segment]
+    gates: [binding_confirmed, boundaries_confirmed]
+    uses_llm: true
+    output: FactsArtifact
+
+  # 6.7, шаг Б. Сверка цитат кодом.
+  - name: verify
+    scope: talk
+    resource: cpu
+    needs: [facts]
+    gates: []
+    uses_llm: false
+    output: VerifiedClaimsArtifact
+
+  # 6.7, шаги В и Г. Текст сводки и проверки.
+  - name: summary
+    scope: talk
+    resource: gpu
+    needs: [verify]
+    gates: []
+    uses_llm: true
+    output: SummaryArtifact
