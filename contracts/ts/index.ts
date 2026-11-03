@@ -1,5 +1,5 @@
 // Сгенерировано из schema/all.schema.json командой make generate. Не редактировать.
-// Версия контрактов: 0.1.0
+// Версия контрактов: 0.2.0
 
 /**
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
@@ -583,10 +583,15 @@ export interface PipelineGraph {
 /**
  * Этап конвейера. Этап с областью talk разворачивается в задачу на каждый доклад.
  *
+ * file_kinds — входные файлы этапа. Этап с областью file запускается на каждый файл этих
+ * видов. Этап конференции с непустым списком нужен, только если такие файлы есть: без записей
+ * разбиение не запускается.
+ *
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
  * via the `definition` "StageSpec".
  */
 export interface StageSpec {
+  file_kinds?: FileKind[];
   gates: HumanGate[];
   name: string;
   needs: string[];

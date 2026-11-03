@@ -2755,8 +2755,15 @@
     },
     "StageSpec": {
       "additionalProperties": false,
-      "description": "Этап конвейера. Этап с областью talk разворачивается в задачу на каждый доклад.",
+      "description": "Этап конвейера. Этап с областью talk разворачивается в задачу на каждый доклад.\n\nfile_kinds — входные файлы этапа. Этап с областью file запускается на каждый файл этих\nвидов. Этап конференции с непустым списком нужен, только если такие файлы есть: без записей\nразбиение не запускается.",
       "properties": {
+        "file_kinds": {
+          "items": {
+            "$ref": "#/$defs/FileKind"
+          },
+          "title": "File Kinds",
+          "type": "array"
+        },
         "gates": {
           "items": {
             "$ref": "#/$defs/HumanGate"
@@ -3453,5 +3460,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RapporteurContracts",
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

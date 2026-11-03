@@ -5,7 +5,7 @@ export HOST_GID := $(shell id -g)
 COMPOSE := docker compose
 PY := $(COMPOSE) run --rm --build py
 
-.PHONY: check lint test run lock
+.PHONY: check lint test run graph lock
 
 ## Все проверки каталога; корневой make check вызывает эту цель
 check: lint test
@@ -22,6 +22,10 @@ run:
 	@test -n "$(STAGE)" -a -n "$(INPUT)" || { echo "укажите STAGE и INPUT" >&2; exit 2; }
 	mkdir -p .rapporteur-data
 	RAPPORTEUR_INPUT="$(abspath $(INPUT))" $(PY) rapporteur run $(STAGE) /input --data-dir /data
+
+## Проверить граф этапов pipeline/graph.yaml и показать порядок исполнения
+graph:
+	$(PY) rapporteur graph
 
 ## Обновить uv.lock после правки pyproject.toml
 lock:

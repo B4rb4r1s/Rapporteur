@@ -3,15 +3,20 @@
 from graphlib import CycleError, TopologicalSorter
 from typing import Self
 
-from pydantic import PositiveInt, model_validator
+from pydantic import Field, PositiveInt, model_validator
 from pydantic_core import PydanticCustomError
 
 from rapporteur_contracts.base import ContractModel, NonEmptyStr, StageName
-from rapporteur_contracts.enums import HumanGate, ResourceKind, StageScope
+from rapporteur_contracts.enums import FileKind, HumanGate, ResourceKind, StageScope
 
 
 class StageSpec(ContractModel):
-    """Этап конвейера. Этап с областью talk разворачивается в задачу на каждый доклад."""
+    """Этап конвейера. Этап с областью talk разворачивается в задачу на каждый доклад.
+
+    file_kinds — входные файлы этапа. Этап с областью file запускается на каждый файл этих
+    видов. Этап конференции с непустым списком нужен, только если такие файлы есть: без записей
+    разбиение не запускается.
+    """
 
     name: StageName
     scope: StageScope
@@ -20,6 +25,19 @@ class StageSpec(ContractModel):
     gates: list[HumanGate]
     uses_llm: bool
     output: NonEmptyStr
+    file_kinds: list[FileKind] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _file_kinds_match_scope(self) -> Self:
+        missing = self.scope is StageScope.FILE and not self.file_kinds
+        forbidden = self.scope is StageScope.TALK and bool(self.file_kinds)
+        if missing or forbidden:
+            raise PydanticCustomError(
+                "file_kinds_mismatch",
+                "виды файлов нужны этапу с областью file и запрещены этапу доклада: {name}",
+                {"name": self.name},
+            )
+        return self
 
 
 class PipelineGraph(ContractModel):
