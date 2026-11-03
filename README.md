@@ -31,7 +31,8 @@ CI нет (ADR-011). Перед слиянием в `main` автор запус
 | Каталог | Что внутри |
 | --- | --- |
 | `contracts/` | контракты данных: Pydantic-модели, JSON Schema, TS-типы, примеры |
-| `pipeline/` | этапы конвейера без веба и БД, CLI `rapporteur run`; сейчас разбор презентаций и заметок |
+| `pipeline/` | этапы конвейера без веба и БД, CLI `rapporteur run`; сейчас разбор презентаций и заметок, грамматика и рендер бланка справки |
+| `templates/` | бланки справки: DOCX и `variables.yaml`, правила в [templates/README.md](templates/README.md) |
 | `backend/` | FastAPI |
 | `frontend/` | React + Vite + TypeScript |
 | `deploy/` | compose-сервисы, сейчас Ollama |

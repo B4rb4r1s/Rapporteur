@@ -5,9 +5,12 @@ description = "Этапы конвейера «Репортёра» (spec §6, A
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "rapporteur-contracts",
+    "docxtpl>=0.20.2,<0.21",
     "pillow>=13.0,<13.1",
+    "pymorphy3>=2.0.6,<2.1",
     "pypdfium2>=5.14,<5.15",
     "python-pptx>=1.0.2,<1.1",
+    "pyyaml>=6.0,<7",
 ]
 
 [project.scripts]
@@ -18,6 +21,7 @@ dev = [
     "mypy>=2.4,<2.5",
     "pytest>=9.1,<9.2",
     "ruff>=0.17,<0.18",
+    "types-pyyaml>=6.0.12,<6.1",
 ]
 
 [build-system]
@@ -58,8 +62,11 @@ files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-# У python-pptx и pypdfium2 нет полных аннотаций типов.
-module = ["pptx", "pptx.*", "pypdfium2", "pypdfium2.*"]
+# У этих библиотек нет полных аннотаций типов.
+module = [
+    "docx", "docx.*", "docxtpl", "docxtpl.*", "pptx", "pptx.*",
+    "pymorphy3", "pymorphy3.*", "pypdfium2", "pypdfium2.*",
+]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]

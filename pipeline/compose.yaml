@@ -13,6 +13,7 @@ services:
     volumes:
       - .:/repo/pipeline
       - ../contracts:/repo/contracts:ro
+      - ../templates:/repo/templates:ro
       # Материалы для `make run`; по умолчанию пустой каталог.
       - ${RAPPORTEUR_INPUT:-./.empty}:/input:ro
       - ${RAPPORTEUR_DATA:-./.rapporteur-data}:/data
