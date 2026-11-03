@@ -18,6 +18,7 @@ Docker с плагином compose и make. Python, Node и библиотеки
 | `make lint` | только линтеры и проверка типов |
 | `make test` | только тесты |
 | `make -C backend run` | backend на http://127.0.0.1:8000, проверка — `/health` |
+| `make -C pipeline run STAGE=slides INPUT=$PWD/data` | этап конвейера на папке с материалами; результаты в `pipeline/.rapporteur-data/`, вне git. `STAGE` — `slides` или `notes` |
 
 У каждого каталога с кодом свой `Makefile` с теми же целями и `make lock` для обновления lock-файла.
 
@@ -30,6 +31,7 @@ CI нет (ADR-011). Перед слиянием в `main` автор запус
 | Каталог | Что внутри |
 | --- | --- |
 | `contracts/` | контракты данных: Pydantic-модели, JSON Schema, TS-типы, примеры |
+| `pipeline/` | этапы конвейера без веба и БД, CLI `rapporteur run`; сейчас разбор презентаций и заметок |
 | `backend/` | FastAPI |
 | `frontend/` | React + Vite + TypeScript |
 | `deploy/` | compose-сервисы, сейчас Ollama |

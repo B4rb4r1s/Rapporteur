@@ -1,0 +1,8 @@
+*
+!contracts/pyproject.toml
+!contracts/VERSION
+!contracts/src
+!pipeline/pyproject.toml
+!pipeline/uv.lock
+!pipeline/src
+**/__pycache__

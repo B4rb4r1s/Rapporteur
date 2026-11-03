@@ -1,0 +1,113 @@
+"""Интерфейс этапа и служебная часть артефакта (ADR-005, ADR-007)."""
+
+import hashlib
+import json
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import StrEnum
+from importlib.metadata import version
+from pathlib import Path
+from typing import ClassVar, Protocol
+
+from pydantic import BaseModel
+
+from rapporteur_contracts import ArtifactMeta, ArtifactRef, StageInputs, StageOutput
+from rapporteur_pipeline.storage import Storage, artifact_key, sha256_hex
+
+CONTRACT_VERSION = version("rapporteur-contracts")
+
+# Вход этапа с областью file — сам файл: ArtifactRef с этим именем указывает на blobs/.
+SOURCE_INPUT = "source"
+
+
+class FailureCode(StrEnum):
+    """Устойчивые коды ошибок одного файла; попадают в FileFailure."""
+
+    UNSUPPORTED_FORMAT = "unsupported_format"
+    BROKEN_FILE = "broken_file"
+    ENCRYPTED_FILE = "encrypted_file"
+    FILE_TOO_LARGE = "file_too_large"
+    TOO_MANY_PAGES = "too_many_pages"
+    ARCHIVE_LIMITS = "archive_limits"
+    RENDER_FAILED = "render_failed"
+
+
+class StageError(Exception):
+    """Ошибка входного файла. Обработка остальных файлов продолжается (spec §6)."""
+
+    def __init__(self, code: FailureCode, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+@dataclass(frozen=True)
+class StageContext:
+    storage: Storage
+    config: BaseModel
+    tmp_dir: Path
+
+
+class Stage(Protocol):
+    name: ClassVar[str]
+    version: ClassVar[str]
+    config_model: ClassVar[type[BaseModel]]
+
+    def run(self, ctx: StageContext, inputs: StageInputs) -> StageOutput: ...
+
+
+def config_hash(config: BaseModel) -> str:
+    return sha256_hex(config.model_dump_json().encode())
+
+
+def cache_key(stage: str, stage_version: str, input_hashes: list[str], cfg_hash: str) -> str:
+    payload = {
+        "stage": stage,
+        "stage_version": stage_version,
+        "contract_version": CONTRACT_VERSION,
+        "inputs": sorted(input_hashes),
+        "config": cfg_hash,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def make_meta(stage: Stage, inputs: StageInputs, *, stub: bool) -> ArtifactMeta:
+    input_hashes = [ref.sha256 for ref in inputs.artifacts]
+    return ArtifactMeta(
+        stage=stage.name,
+        stage_version=stage.version,
+        contract_version=CONTRACT_VERSION,
+        cache_key=cache_key(stage.name, stage.version, input_hashes, inputs.config_hash),
+        input_hashes=input_hashes,
+        config_hash=inputs.config_hash,
+        produced_at=datetime.now(UTC),
+        stub=stub,
+    )
+
+
+def single_source(inputs: StageInputs) -> ArtifactRef:
+    sources = [ref for ref in inputs.artifacts if ref.name == SOURCE_INPUT]
+    if len(sources) != 1 or len(inputs.artifacts) != 1:
+        raise ValueError("этапу с областью file нужен ровно один вход source")
+    return sources[0]
+
+
+def read_source(ctx: StageContext, inputs: StageInputs) -> tuple[ArtifactRef, bytes]:
+    source = single_source(inputs)
+    data = ctx.storage.get(source.storage_key)
+    if sha256_hex(data) != source.sha256:
+        raise ValueError(f"хэш {source.storage_key} не совпадает с указанным во входе")
+    return source, data
+
+
+def publish(
+    ctx: StageContext, meta: ArtifactMeta, artifact: BaseModel, warnings: list[str]
+) -> StageOutput:
+    data = artifact.model_dump_json(indent=2).encode()
+    key = artifact_key(meta.stage, meta.cache_key)
+    ctx.storage.put(key, data)
+    return StageOutput(
+        artifact=ArtifactRef(name=meta.stage, storage_key=key, sha256=sha256_hex(data)),
+        meta=meta,
+        warnings=warnings,
+    )

@@ -1,0 +1,20 @@
+name: rapporteur-pipeline
+
+services:
+  # Парсеры и LibreOffice работают без сети и не от root (spec §10).
+  py:
+    build:
+      context: ..
+      dockerfile: pipeline/Dockerfile
+    image: rapporteur-pipeline-dev:local
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    network_mode: none
+    working_dir: /repo/pipeline
+    volumes:
+      - .:/repo/pipeline
+      - ../contracts:/repo/contracts:ro
+      # Материалы для `make run`; по умолчанию пустой каталог.
+      - ${RAPPORTEUR_INPUT:-./.empty}:/input:ro
+      - ${RAPPORTEUR_DATA:-./.rapporteur-data}:/data
+    environment:
+      HOME: /tmp
