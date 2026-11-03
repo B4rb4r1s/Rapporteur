@@ -27,18 +27,18 @@
 
 # Команда 1: ядро
 /eval/                  @k1-lead @k2-a
-/pipeline/graph.yaml    @k1-lead @k2-a
-/pipeline/segment/      @k1-lead @k2-a
-/pipeline/summarize/    @k1-dev @k1-lead
-/prompts/               @k1-dev @k1-lead
-/pipeline/report/       @k1-dev @k2-b
-/templates/             @k1-dev @k2-b
+/pipeline/graph.yaml                              @k1-lead @k2-a
+/pipeline/src/rapporteur_pipeline/segment/        @k1-lead @k2-a
+/pipeline/src/rapporteur_pipeline/summarize/      @k1-dev @k1-lead
+/prompts/                                         @k1-dev @k1-lead
+/pipeline/src/rapporteur_pipeline/report/         @k1-dev @k2-b
+/templates/                                       @k1-dev @k2-b
 
 # Команда 2: платформа
 /deploy/                @k2-a @k1-lead
 /workers/               @k2-a @k1-lead
-/pipeline/ingest/       @k2-a @k1-lead
-/pipeline/speech/       @k2-a @k1-lead
+/pipeline/src/rapporteur_pipeline/ingest/         @k2-a @k1-lead
+/pipeline/src/rapporteur_pipeline/speech/         @k2-a @k1-lead
 /backend/               @k2-b @k1-dev
 /frontend/              @k2-b @k1-dev
 

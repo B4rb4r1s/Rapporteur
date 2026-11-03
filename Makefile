@@ -1,6 +1,6 @@
 # Проверки всего репозитория. Нужны только Docker и make; CI нет (ADR-011),
 # поэтому make check запускается перед каждым слиянием в main.
-DIRS := contracts backend frontend
+DIRS := contracts pipeline backend frontend
 
 .PHONY: check lint test eval
 
