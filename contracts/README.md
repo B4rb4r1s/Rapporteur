@@ -8,6 +8,7 @@
 
 | Команда | Что делает |
 | --- | --- |
+| `make check` | всё ниже, кроме `lock`; вызывается корневым `make check` |
 | `make generate` | JSON Schema в `schema/` и TS-типы в `ts/index.ts` из моделей |
 | `make test` | примеры, отказы, правила |
 | `make lint` | ruff, mypy, tsc |

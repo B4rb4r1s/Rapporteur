@@ -1,0 +1,12 @@
+name: rapporteur-frontend
+
+services:
+  ts:
+    build: .
+    image: rapporteur-frontend-dev:local
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    working_dir: /repo/frontend
+    volumes:
+      - .:/repo/frontend
+    environment:
+      HOME: /tmp
