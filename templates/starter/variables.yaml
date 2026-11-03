@@ -1,0 +1,44 @@
+# Стартовый бланк справки (spec §6.9). Значения подставляет код, а не модель (принцип 2).
+# Бланк использует только переменные из этого списка: иначе load_template отклонит его.
+version: starter-1
+document: report.docx
+variables:
+  title:
+    source: conference.title
+    type: str
+    required: true
+    description: Название конференции. Кавычки ставит фильтр ёлочки, в значении они не нужны.
+  period:
+    source: report.period
+    type: period
+    required: true
+    description: Первый и последний день, которые охватывает справка (ADR-006).
+  place:
+    source: conference.place
+    type: str
+    required: false
+    description: >-
+      Место в той форме, в какой оно стоит в бланке, например «г. Казань»:
+      названия городов автоматически не склоняются.
+  organizer:
+    source: conference.organizer
+    type: str
+    required: false
+    description: Организатор конференции. В стартовом бланке не используется.
+  talks_count:
+    source: computed.talks_count
+    type: int
+    required: true
+    description: Число докладов в справке; доклады «не состоялся» и «Недостаточно информации» не входят.
+  speakers_count:
+    source: computed.speakers_count
+    type: int
+    required: true
+    description: Число уникальных докладчиков в справке, без соавторов.
+  talks:
+    source: report.talks
+    type: list
+    required: true
+    description: >-
+      Доклады справки по порядку. Поля доклада: title, speakers, affiliations,
+      section_title, summary, conclusions (ReportTalk в contracts/).

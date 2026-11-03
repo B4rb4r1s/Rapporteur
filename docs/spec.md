@@ -340,30 +340,37 @@ LLM исправляет в стенограмме доклада искажён
 
 «Количество докладчиков» по умолчанию — число уникальных выступавших в выборке без соавторов; режим настраивается.
 
-**Бланк** — DOCX с Jinja-плейсхолдерами (docxtpl) и YAML-описание переменных: имя, источник, тип, формат, обязательность. Стартовый бланк (синтаксис упрощён):
+**Бланк** — каталог в `templates/` с DOCX на Jinja-плейсхолдерах (docxtpl) и `variables.yaml`: для каждой переменной источник, тип (`str`, `int`, `period`, `list`), обязательность и описание. Код отклоняет бланк, который использует неописанную переменную, и сборку без обязательной; опечатка в бланке — ошибка, а не пропавший текст. Фильтры бланка: `период`, `согласовать`, `ёлочки`, `типографика` ([templates/README.md](../templates/README.md)). Стартовый бланк `templates/starter`, основной текст:
 
 ```
-В период {{ dates | период }} состоялась конференция «{{ title }}».
-В рамках конференции {{ talks_count | заслушано("доклад") }}.
+Конференция проходила {{ period | период }}
+{%p if place %}Место проведения: {{ place }}.{%p endif %}
+В рамках конференции {{ talks_count | согласовать("доклад", глагол="заслушан") }},
+с докладами {{ speakers_count | согласовать("докладчик", глагол="выступил") }}.
 
-{% for talk in talks %}
-{{ loop.index }}. {{ talk.speakers | join(", ") }}. «{{ talk.title }}».
-{{ talk.summary }}
-{% if talk.conclusions %}Основные выводы:
-{% for c in talk.conclusions %}– {{ c }}
-{% endfor %}{% endif %}
-{% endfor %}
+{%p for talk in talks %}
+{{ loop.index }}. {{ talk.title | ёлочки }} ({{ talk.speakers | join(", ") }})
+{{ talk.summary | типографика }}
+{%p if talk.conclusions %}Основные выводы:
+{%p for conclusion in talk.conclusions %}– {{ conclusion | типографика }}{%p endfor %}
+{%p endif %}
+{%p endfor %}
 ```
 
 ```yaml
+version: starter-1
+document: report.docx
 variables:
   title:          {source: conference.title, type: str, required: true}
-  dates:          {source: report.period, type: date_range, required: true}
+  period:         {source: report.period, type: period, required: true}
   place:          {source: conference.place, type: str, required: false}
+  organizer:      {source: conference.organizer, type: str, required: false}
   talks_count:    {source: computed.talks_count, type: int, required: true}
   speakers_count: {source: computed.speakers_count, type: int, required: true}
   talks:          {source: report.talks, type: list, required: true}
 ```
+
+Имена переменных совпадают с `ReportInput` и `ReportVariables` из `contracts/`; `period` строится из `period_start` и `period_end`.
 
 Когда появятся реальные образцы справок, меняются DOCX, YAML и few-shot примеры стиля; код не меняется. Код придётся трогать, только если в бланке появится сведение, которого нет в данных: тогда добавляется поле в реестр или в схему фактов.
 

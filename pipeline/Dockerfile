@@ -1,10 +1,11 @@
 # Контекст сборки — корень репозитория: pipeline зависит от contracts (ADR-007).
 FROM python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159
 
-# LibreOffice рендерит pptx в PDF; шрифты Carlito и Caladea метрически совместимы с Calibri и Cambria.
+# LibreOffice рендерит pptx в PDF (Impress) и справку DOCX в PDF (Writer);
+# шрифты Carlito и Caladea метрически совместимы с Calibri и Cambria.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      libreoffice-impress-nogui fonts-dejavu-core fonts-liberation \
+      libreoffice-impress-nogui libreoffice-writer-nogui fonts-dejavu-core fonts-liberation \
       fonts-crosextra-carlito fonts-crosextra-caladea \
  && rm -rf /var/lib/apt/lists/*
 
