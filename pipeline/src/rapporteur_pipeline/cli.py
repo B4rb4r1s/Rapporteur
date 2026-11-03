@@ -1,6 +1,7 @@
 """Запуск этапа из командной строки без веба и БД (ADR-007):
 
     rapporteur run slides ./Конференция --data-dir ./.rapporteur-data
+    rapporteur graph
 
 Каждый подходящий файл папки кладётся в хранилище по хэшу и обрабатывается отдельно. Ошибка
 одного файла не останавливает остальные; код возврата 1, если хотя бы один файл не обработан.
@@ -16,6 +17,7 @@ from pathlib import Path
 
 from rapporteur_contracts import ArtifactRef, NotesArtifact, SlidesArtifact, StageInputs
 from rapporteur_contracts.artifacts import FileFailure
+from rapporteur_pipeline.graph import GRAPH_FILE, GraphError, execution_order, load_graph
 from rapporteur_pipeline.ingest.notes import NotesStage
 from rapporteur_pipeline.ingest.slides import SlidesStage
 from rapporteur_pipeline.stage import (
@@ -57,7 +59,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     run.add_argument("path", type=Path)
     run.add_argument("--data-dir", type=Path, default=Path(".rapporteur-data"))
     run.add_argument("--stub", action="store_true", help="заглушка вместо настоящего этапа")
+    graph = commands.add_parser("graph", help="проверить граф этапов и показать порядок")
+    graph.add_argument("--file", type=Path, default=GRAPH_FILE)
     args = parser.parse_args(argv)
+
+    if args.command == "graph":
+        return _show_graph(args.file)
 
     entry = STAGES[args.stage]
     stage = entry.stub if args.stub else entry.real
@@ -76,6 +83,29 @@ def main(argv: Sequence[str] | None = None) -> int:
     for failure in failures:
         print(f"  {failure.original_name}: {failure.code} — {failure.message}")
     return 1 if failures else 0
+
+
+def _show_graph(path: Path) -> int:
+    try:
+        graph = load_graph(path)
+    except GraphError as error:
+        print(error, file=sys.stderr)
+        return 1
+    stages = {stage.name: stage for stage in graph.stages}
+    print(f"Граф этапов, версия {graph.version}: порядок исполнения")
+    for number, name in enumerate(execution_order(graph), 1):
+        stage = stages[name]
+        details = [stage.scope.value, stage.resource.value]
+        if stage.file_kinds:
+            details.append("файлы: " + ", ".join(kind.value for kind in stage.file_kinds))
+        if stage.needs:
+            details.append("после: " + ", ".join(stage.needs))
+        if stage.gates:
+            details.append("ждёт: " + ", ".join(gate.value for gate in stage.gates))
+        if stage.uses_llm:
+            details.append("LLM")
+        print(f"{number}. {name} → {stage.output} ({'; '.join(details)})")
+    return 0
 
 
 def _collect(path: Path, suffixes: frozenset[str]) -> list[Path]:

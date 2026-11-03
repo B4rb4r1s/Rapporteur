@@ -19,7 +19,10 @@
       ],
       "gates": [],
       "uses_llm": false,
-      "output": "SlidesArtifact"
+      "output": "SlidesArtifact",
+      "file_kinds": [
+        "presentation"
+      ]
     },
     {
       "name": "notes",
@@ -30,7 +33,10 @@
       ],
       "gates": [],
       "uses_llm": false,
-      "output": "NotesArtifact"
+      "output": "NotesArtifact",
+      "file_kinds": [
+        "notes"
+      ]
     },
     {
       "name": "facts",
