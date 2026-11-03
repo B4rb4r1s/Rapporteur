@@ -1,0 +1,57 @@
+[project]
+name = "rapporteur-backend"
+version = "0.1.0"
+description = "Backend «Репортёра»: FastAPI (spec §8, §11)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.150,<0.151",
+    "uvicorn>=0.54,<0.55",
+]
+
+[dependency-groups]
+dev = [
+    # TestClient из Starlette 1.x требует httpx2 вместо httpx.
+    "httpx2>=2,<3",
+    "mypy>=2.4,<2.5",
+    "pytest>=9.1,<9.2",
+    "ruff>=0.17,<0.18",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rapporteur_backend"]
+
+[tool.uv]
+# Только версии старше двух недель на момент блокировки; дату сдвигать вместе с make lock.
+exclude-newer = "2026-10-20T00:00:00Z"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "N", "RUF"]
+# RUF001–003 принимают кириллицу за символы-двойники латиницы.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["rapporteur_backend"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+# Проверять типы аргументов конструкторов моделей, а не принимать Any.
+init_typed = true
+init_forbid_extra = true

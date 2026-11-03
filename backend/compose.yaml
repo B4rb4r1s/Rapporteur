@@ -1,0 +1,25 @@
+name: rapporteur-backend
+
+x-host-user: &host-user "${HOST_UID:-1000}:${HOST_GID:-1000}"
+
+x-py: &py
+  build: .
+  image: rapporteur-backend-dev:local
+  user: *host-user
+  working_dir: /repo/backend
+  volumes:
+    - .:/repo/backend
+  environment:
+    HOME: /tmp
+
+services:
+  py:
+    <<: *py
+
+  # Ручная проверка; общий compose появится в P1-01. Порт открыт только на WEB_BIND_ADDRESS (spec §10).
+  web:
+    <<: *py
+    profiles: [run]
+    command: ["uvicorn", "rapporteur_backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8000}:8000"

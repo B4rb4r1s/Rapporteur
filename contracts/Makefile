@@ -6,9 +6,12 @@ COMPOSE := docker compose
 PY := $(COMPOSE) run --rm --build py
 TS := $(COMPOSE) run --rm ts
 
-.PHONY: all generate test lint check-generated lock
+.PHONY: all check generate test lint check-generated lock
 
 all: generate lint test
+
+## Все проверки каталога; корневой make check вызывает эту цель
+check: lint test check-generated
 
 ## JSON Schema и TS-типы одной командой
 generate:
