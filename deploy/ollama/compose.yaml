@@ -5,6 +5,8 @@
 #   OLLAMA_MODELS_DIR=/путь/к/моделям docker compose -f deploy/ollama/compose.yaml run --rm pull <модель>
 #
 # Сервис pull нужен только на машине с интернетом. В изолированной сети каталог приезжает готовым.
+# Каталог должен быть доступен на запись пользователю HOST_UID: Ollama 0.40.13 создаёт в нём
+# manifests-v2 при первом запуске и без этого отвечает ошибкой 500.
 name: rapporteur-ollama
 
 x-ollama: &ollama

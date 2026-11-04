@@ -1,0 +1,35 @@
+# Профили моделей (spec §9, ADR-010). Формат профиля — ModelProfile из contracts/.
+# Этап получает профиль целиком в конфиге, поэтому смена модели или параметров меняет ключ кэша.
+# prompt_version выбирает файлы prompts/<шаг>/<версия>.md.
+#
+# Целевой профиль сервера (qwen3.6:27b-bf16) появится после замеров P0-03.
+default: local
+profiles:
+  # Машина разработки: RTX 3060 12 ГБ, проверка механизма, а не качества (docs/benchmarks/).
+  - name: local
+    engine: ollama
+    model: qwen3.5:9b
+    weights_revision: sha256:dec52a44569a2a25341c4e4d3fee25846eed4f6f0b936278e3a3c900bb99d37c
+    quantization: q4_K_M
+    generation:
+      temperature: 0.1
+      reasoning: true
+      max_tokens: 12000
+      context_tokens: 32768
+    prompt_version: v1
+    stages: [facts, summary]
+
+  # То же без рассуждения: в 10–13 раз быстрее на машине разработки. spec §6.7 требует
+  # рассуждение на шаге А, поэтому профиль только для отладки цепочки.
+  - name: local-fast
+    engine: ollama
+    model: qwen3.5:9b
+    weights_revision: sha256:dec52a44569a2a25341c4e4d3fee25846eed4f6f0b936278e3a3c900bb99d37c
+    quantization: q4_K_M
+    generation:
+      temperature: 0.1
+      reasoning: false
+      max_tokens: 6000
+      context_tokens: 32768
+    prompt_version: v1
+    stages: [facts, summary]
