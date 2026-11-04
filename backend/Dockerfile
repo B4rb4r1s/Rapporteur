@@ -7,7 +7,9 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
 
 RUN pip install --no-cache-dir uv==0.9.5
 
+COPY contracts/pyproject.toml contracts/VERSION /repo/contracts/
+COPY contracts/src /repo/contracts/src
 WORKDIR /repo/backend
-COPY pyproject.toml uv.lock ./
-COPY src ./src
+COPY backend/pyproject.toml backend/uv.lock ./
+COPY backend/src ./src
 RUN uv sync --frozen && chmod -R a+rwX /opt/venv

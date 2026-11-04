@@ -1,0 +1,169 @@
+# Общий запуск. Миграция очереди выполняется make migrate до старта воркеров.
+# .env читается из корня через --env-file; команды — в корневом Makefile.
+name: rapporteur
+
+x-worker: &worker
+  build:
+    context: ..
+    dockerfile: workers/Dockerfile
+  image: rapporteur-workers:local
+  user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+  environment:
+    HOME: /tmp
+    RAPPORTEUR_MODE: dev
+    PGHOST: db
+    PGDATABASE: ${POSTGRES_DB:-rapporteur}
+    PGUSER: ${POSTGRES_USER:-rapporteur}
+    PGPASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в корневом .env}
+
+services:
+  web:
+    profiles: [dev, gpu]
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    image: rapporteur-web:local
+    restart: unless-stopped
+    environment:
+      HOME: /tmp
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB:-rapporteur}
+      PGUSER: ${POSTGRES_USER:-rapporteur}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в корневом .env}
+    ports:
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8000}:8000"
+    networks: [app]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3).read()"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  db:
+    profiles: [dev, gpu]
+    image: postgres:17.11-bookworm@sha256:839fbb5a4942a7758dd93e18b42ea5649807491a0545b5eeeb8f0b8bb11857a5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rapporteur}
+      POSTGRES_USER: ${POSTGRES_USER:-rapporteur}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в корневом .env (образец — .env.example)}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks: [app]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  init-data:
+    <<: *worker
+    profiles: [dev, gpu]
+    user: "0:0"
+    environment:
+      HOST_UID: ${HOST_UID:-1000}
+      HOST_GID: ${HOST_GID:-1000}
+    network_mode: none
+    volumes: [data:/data]
+    command:
+      - python
+      - -c
+      - "import os; os.chown('/data', int(os.environ['HOST_UID']), int(os.environ['HOST_GID']))"
+
+  worker-cpu:
+    <<: *worker
+    profiles: [dev, gpu]
+    restart: unless-stopped
+    networks: [app]
+    command: [rapporteur-worker, run, --resource, cpu]
+    volumes: [data:/data]
+    depends_on:
+      db:
+        condition: service_healthy
+      init-data:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, rapporteur-worker, health, --resource, cpu]
+      interval: 10s
+      timeout: 8s
+      retries: 3
+      start_period: 10s
+
+  worker-gpu:
+    <<: *worker
+    profiles: [dev, gpu]
+    restart: unless-stopped
+    networks: [app]
+    command: [rapporteur-worker, run, --resource, gpu]
+    volumes: [data:/data]
+    depends_on:
+      db:
+        condition: service_healthy
+      init-data:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, rapporteur-worker, health, --resource, gpu]
+      interval: 10s
+      timeout: 8s
+      retries: 3
+      start_period: 10s
+
+  # Эти сервисы запускаются явно и завершаются; up их не оставляет работать.
+  migrate:
+    <<: *worker
+    profiles: [tools]
+    networks: [app]
+    command: [rapporteur-worker, migrate]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend-migrate:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    image: rapporteur-backend:local
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    profiles: [tools]
+    command: [rapporteur-backend, migrate]
+    environment:
+      HOME: /tmp
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB:-rapporteur}
+      PGUSER: ${POSTGRES_USER:-rapporteur}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в корневом .env}
+    networks: [app]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  cli:
+    <<: *worker
+    profiles: [tools]
+    networks: [app]
+    entrypoint: [rapporteur-worker]
+    volumes:
+      - data:/data
+      - ${RAPPORTEUR_INPUT:-../data}:/input:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      init-data:
+        condition: service_completed_successfully
+
+networks:
+  app:
+    internal: true
+
+volumes:
+  postgres:
+  data:

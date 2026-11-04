@@ -4,6 +4,10 @@ version = "0.1.0"
 description = "Backend «Репортёра»: FastAPI (spec §8, §11)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "rapporteur-contracts",
+    "sqlalchemy>=2.0,<2.1",
+    "alembic>=1.17,<2",
+    "psycopg[binary]>=3.3,<3.4",
     "fastapi>=0.150,<0.151",
     "uvicorn>=0.54,<0.55",
 ]
@@ -17,6 +21,9 @@ dev = [
     "ruff>=0.17,<0.18",
 ]
 
+[project.scripts]
+rapporteur-backend = "rapporteur_backend.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -27,6 +34,9 @@ packages = ["src/rapporteur_backend"]
 [tool.uv]
 # Только версии старше двух недель на момент блокировки; дату сдвигать вместе с make lock.
 exclude-newer = "2026-10-20T00:00:00Z"
+
+[tool.uv.sources]
+rapporteur-contracts = { path = "../contracts", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -43,7 +53,7 @@ select = ["E", "F", "I", "UP", "B", "N", "RUF"]
 ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["rapporteur_backend"]
+known-first-party = ["rapporteur_backend", "rapporteur_contracts"]
 
 [tool.mypy]
 python_version = "3.12"

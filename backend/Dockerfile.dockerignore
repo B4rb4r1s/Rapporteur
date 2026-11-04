@@ -1,0 +1,12 @@
+**
+!contracts
+!contracts/pyproject.toml
+!contracts/VERSION
+!contracts/src
+!contracts/src/**
+!backend
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/src
+!backend/src/**
+**/__pycache__

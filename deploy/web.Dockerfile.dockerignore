@@ -1,0 +1,27 @@
+# В контекст не попадают материалы, .env, локальные зависимости и результаты проверок.
+**
+!contracts
+!contracts/pyproject.toml
+!contracts/VERSION
+!contracts/src
+!contracts/src/**
+!backend
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/src
+!backend/src/**
+!frontend
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/index.html
+!frontend/tsconfig.json
+!frontend/vite.config.ts
+!frontend/src
+!frontend/src/**
+!frontend/public
+!frontend/public/**
+!deploy
+!deploy/web.Dockerfile
+!deploy/web.Dockerfile.dockerignore
+**/__pycache__
+**/*.pyc
