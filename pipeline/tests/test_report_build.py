@@ -14,7 +14,7 @@ from docx import Document
 
 from rapporteur_contracts import Conference, Person, Section, Summary, Talk
 from rapporteur_contracts.entities import TalkParticipant
-from rapporteur_contracts.enums import PersonRole, ReportFormat, TalkStatus
+from rapporteur_contracts.enums import PersonRole, ReportFormat, SummaryStatus, TalkStatus
 from rapporteur_pipeline.report.assemble import (
     AssembledInput,
     ReportError,
@@ -320,3 +320,27 @@ def test_all_formats_have_the_same_content(tmp_path: Path) -> None:
     for file in files:
         data = storage.get(file.storage_key)
         assert (file.sha256, file.size_bytes) == (sha256_hex(data), len(data))
+
+
+def test_empty_summary_stays_out_and_needs_attention_is_reported() -> None:
+    empty = SUMMARIES[2].model_copy(
+        update={"sentences": [], "conclusions": [], "status": SummaryStatus.NEEDS_ATTENTION}
+    )
+    flagged = SUMMARIES[0].model_copy(update={"status": SummaryStatus.NEEDS_ATTENTION})
+    sources = ReportSources(
+        conference=CONFERENCE,
+        sections=SECTIONS,
+        talks=TALKS,
+        people=PEOPLE,
+        summaries=[flagged, SUMMARIES[1], empty],
+    )
+
+    assembled = build_report_input(
+        sources, select_talks(sources), "starter-1", unreviewed_confirmed=True
+    )
+    assert [t.talk_id for t in assembled.input.talks] == [CACHE.id, JOURNAL.id]
+    assert (
+        "Не входит в справку: «Сжатие временных рядов» — сводка пуста: нужна правка человеком"
+        in assembled.warnings
+    )
+    assert "Сводка не прошла проверки, нужна правка: «Кэширование запросов»" in assembled.warnings

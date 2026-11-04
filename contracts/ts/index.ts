@@ -1,5 +1,5 @@
 // Сгенерировано из schema/all.schema.json командой make generate. Не редактировать.
-// Версия контрактов: 0.2.0
+// Версия контрактов: 0.3.0
 
 /**
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
@@ -320,7 +320,7 @@ export interface FactDraft {
   text: string;
 }
 /**
- * facts.json, шаг А.
+ * facts.json, шаг А. profile и prompt_version нужны сводке для Summary.prompt_versions.
  *
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
  * via the `definition` "FactsArtifact".
@@ -328,6 +328,8 @@ export interface FactDraft {
 export interface FactsArtifact {
   facts: FactsDraft;
   meta: ArtifactMeta;
+  profile: string;
+  prompt_version: string;
   talk_id: string;
 }
 /**

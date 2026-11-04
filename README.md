@@ -20,6 +20,7 @@ Docker с плагином compose и make. Python, Node и библиотеки
 | `make -C backend run` | backend на http://127.0.0.1:8000, проверка — `/health` |
 | `make -C pipeline graph` | проверка графа этапов `pipeline/graph.yaml` и порядок исполнения |
 | `make -C pipeline run STAGE=slides INPUT=$PWD/data` | этап конвейера на папке с материалами; результаты в `pipeline/.rapporteur-data/`, вне git. `STAGE` — `slides` или `notes` |
+| `make -C pipeline report INPUT=$PWD/data PROFILE=local-fast` | справка по папке через локальную модель: разбор, факты, сверка цитат, сводки, DOCX, Markdown и PDF в `pipeline/.rapporteur-data/exports/`. Нужен запущенный сервис `deploy/ollama`; `ARGS=--stub` — без модели |
 
 У каждого каталога с кодом свой `Makefile` с теми же целями и `make lock` для обновления lock-файла.
 
@@ -32,7 +33,8 @@ CI нет (ADR-011). Перед слиянием в `main` автор запус
 | Каталог | Что внутри |
 | --- | --- |
 | `contracts/` | контракты данных: Pydantic-модели, JSON Schema, TS-типы, примеры |
-| `pipeline/` | этапы конвейера без веба и БД, CLI `rapporteur run`; сейчас разбор презентаций и заметок, грамматика и рендер бланка справки |
+| `pipeline/` | этапы конвейера без веба и БД, CLI `rapporteur run` и `rapporteur report`: разбор презентаций и заметок, факты и сводки через Ollama, сверка цитат, сборка справки по бланку |
+| `prompts/` | промпты шагов сводки с версиями ([README](prompts/README.md)) |
 | `templates/` | бланки справки: DOCX и `variables.yaml`, правила в [templates/README.md](templates/README.md) |
 | `backend/` | FastAPI |
 | `frontend/` | React + Vite + TypeScript |

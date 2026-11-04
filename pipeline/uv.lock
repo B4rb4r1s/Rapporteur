@@ -489,6 +489,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "rapidfuzz" },
     { name = "rapporteur-contracts" },
+    { name = "razdel" },
 ]
 
 [package.dev-dependencies]
@@ -509,6 +510,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0,<7" },
     { name = "rapidfuzz", specifier = ">=3.14,<3.15" },
     { name = "rapporteur-contracts", editable = "../contracts" },
+    { name = "razdel", specifier = ">=0.5,<0.6" },
 ]
 
 [package.metadata.requires-dev]
@@ -517,6 +519,15 @@ dev = [
     { name = "pytest", specifier = ">=9.1,<9.2" },
     { name = "ruff", specifier = ">=0.17,<0.18" },
     { name = "types-pyyaml", specifier = ">=6.0.12,<6.1" },
+]
+
+[[package]]
+name = "razdel"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/ea/0151ae55bd26699487e668a865ef43e49409025c7464569beffe1a5789f0/razdel-0.5.0.tar.gz", hash = "sha256:4334c0fdfe34d4e888cf0ed854968c9df14f0a547df909a77f4634f9ffe626e6", size = 19248, upload-time = "2020-03-26T04:27:54.331Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/2c/664223a3924aa6e70479f7d37220b3a658765b9cfe760b4af7ffdc50d38f/razdel-0.5.0-py3-none-any.whl", hash = "sha256:76f59691c3216b47d32fef6274c18c12d61f602f1444b7ef4b135b03801f6d37", size = 21149, upload-time = "2020-03-26T04:27:52.591Z" },
 ]
 
 [[package]]

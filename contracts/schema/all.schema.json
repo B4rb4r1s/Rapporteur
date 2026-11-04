@@ -496,13 +496,23 @@
     },
     "FactsArtifact": {
       "additionalProperties": false,
-      "description": "facts.json, шаг А.",
+      "description": "facts.json, шаг А. profile и prompt_version нужны сводке для Summary.prompt_versions.",
       "properties": {
         "facts": {
           "$ref": "#/$defs/FactsDraft"
         },
         "meta": {
           "$ref": "#/$defs/ArtifactMeta"
+        },
+        "profile": {
+          "minLength": 1,
+          "title": "Profile",
+          "type": "string"
+        },
+        "prompt_version": {
+          "minLength": 1,
+          "title": "Prompt Version",
+          "type": "string"
         },
         "talk_id": {
           "format": "uuid",
@@ -513,6 +523,8 @@
       "required": [
         "meta",
         "talk_id",
+        "profile",
+        "prompt_version",
         "facts"
       ],
       "title": "FactsArtifact",
@@ -3460,5 +3472,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RapporteurContracts",
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

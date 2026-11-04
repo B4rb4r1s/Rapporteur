@@ -285,6 +285,8 @@ def test_stage_publishes_verified_claims(tmp_path: Path) -> None:
             stub=True,
         ),
         talk_id=TALK,
+        profile="local",
+        prompt_version="v1",
         facts=FactsDraft(
             title=None,
             speakers=[],

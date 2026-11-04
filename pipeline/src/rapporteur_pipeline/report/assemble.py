@@ -16,7 +16,12 @@ from uuid import UUID
 from pydantic import ValidationError
 
 from rapporteur_contracts import Conference, Person, ReportInput, Section, Summary, Talk
-from rapporteur_contracts.enums import REPORTABLE_TALK_STATUSES, PersonRole, TalkStatus
+from rapporteur_contracts.enums import (
+    REPORTABLE_TALK_STATUSES,
+    PersonRole,
+    SummaryStatus,
+    TalkStatus,
+)
 from rapporteur_contracts.reports import (
     ReportSelection,
     ReportTalk,
@@ -119,10 +124,14 @@ def build_report_input(
             reason = _SKIP_REASONS.get(talk.status, f"статус {talk.status.value}")
         elif summary is None:
             reason = "нет сводки"
+        elif not summary.sentences:
+            reason = "сводка пуста: нужна правка человеком"
         elif talk.title is None:
             reason = "у доклада нет названия в реестре"
         else:
             included.append(_report_talk(sources, talk, talk.title, summary))
+            if summary.status is SummaryStatus.NEEDS_ATTENTION:
+                warnings.append(f"Сводка не прошла проверки, нужна правка: {_name(talk)}")
             if talk.status is TalkStatus.STALE:
                 warnings.append(f"Сводка устарела после правки источника: {_name(talk)}")
             elif talk.status is not TalkStatus.REVIEWED:
