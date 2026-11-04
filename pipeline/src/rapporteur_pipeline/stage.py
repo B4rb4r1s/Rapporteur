@@ -94,10 +94,22 @@ def single_source(inputs: StageInputs) -> ArtifactRef:
 
 def read_source(ctx: StageContext, inputs: StageInputs) -> tuple[ArtifactRef, bytes]:
     source = single_source(inputs)
-    data = ctx.storage.get(source.storage_key)
-    if sha256_hex(data) != source.sha256:
-        raise ValueError(f"хэш {source.storage_key} не совпадает с указанным во входе")
-    return source, data
+    return source, _read_checked(ctx, source)
+
+
+def read_input(ctx: StageContext, inputs: StageInputs, name: str) -> bytes:
+    """Вход этапа по имени: артефакт другого этапа или пакет фрагментов доклада."""
+    refs = [ref for ref in inputs.artifacts if ref.name == name]
+    if len(refs) != 1:
+        raise ValueError(f"у этапа должен быть ровно один вход {name}")
+    return _read_checked(ctx, refs[0])
+
+
+def _read_checked(ctx: StageContext, ref: ArtifactRef) -> bytes:
+    data = ctx.storage.get(ref.storage_key)
+    if sha256_hex(data) != ref.sha256:
+        raise ValueError(f"хэш {ref.storage_key} не совпадает с указанным во входе")
+    return data
 
 
 def publish(
