@@ -7,12 +7,15 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from importlib.metadata import version
 from pathlib import Path
-from typing import ClassVar, Protocol
+from typing import TYPE_CHECKING, ClassVar, Protocol
 
 from pydantic import BaseModel
 
 from rapporteur_contracts import ArtifactMeta, ArtifactRef, StageInputs, StageOutput
 from rapporteur_pipeline.storage import Storage, artifact_key, sha256_hex
+
+if TYPE_CHECKING:
+    from rapporteur_pipeline.llm.client import LlmClient
 
 CONTRACT_VERSION = version("rapporteur-contracts")
 
@@ -21,7 +24,7 @@ SOURCE_INPUT = "source"
 
 
 class FailureCode(StrEnum):
-    """Устойчивые коды ошибок одного файла; попадают в FileFailure."""
+    """Устойчивые коды ошибок файла или доклада; попадают в FileFailure и Job.error_code."""
 
     UNSUPPORTED_FORMAT = "unsupported_format"
     BROKEN_FILE = "broken_file"
@@ -30,10 +33,17 @@ class FailureCode(StrEnum):
     TOO_MANY_PAGES = "too_many_pages"
     ARCHIVE_LIMITS = "archive_limits"
     RENDER_FAILED = "render_failed"
+    # Шаги сводки (spec §6.7).
+    NO_SOURCES = "no_sources"
+    CONTEXT_OVERFLOW = "context_overflow"
+    LLM_UNAVAILABLE = "llm_unavailable"
+    LLM_TRUNCATED = "llm_truncated"
+    LLM_INVALID_OUTPUT = "llm_invalid_output"
 
 
 class StageError(Exception):
-    """Ошибка входного файла. Обработка остальных файлов продолжается (spec §6)."""
+    """Контролируемая ошибка входа этапа. Обработка остальных файлов и докладов продолжается
+    (spec §6)."""
 
     def __init__(self, code: FailureCode, message: str) -> None:
         super().__init__(message)
@@ -46,6 +56,8 @@ class StageContext:
     storage: Storage
     config: BaseModel
     tmp_dir: Path
+    # Клиент модели нужен только этапам с uses_llm в графе.
+    llm: "LlmClient | None" = None
 
 
 class Stage(Protocol):
@@ -94,10 +106,22 @@ def single_source(inputs: StageInputs) -> ArtifactRef:
 
 def read_source(ctx: StageContext, inputs: StageInputs) -> tuple[ArtifactRef, bytes]:
     source = single_source(inputs)
-    data = ctx.storage.get(source.storage_key)
-    if sha256_hex(data) != source.sha256:
-        raise ValueError(f"хэш {source.storage_key} не совпадает с указанным во входе")
-    return source, data
+    return source, _read_checked(ctx, source)
+
+
+def read_input(ctx: StageContext, inputs: StageInputs, name: str) -> bytes:
+    """Вход этапа по имени: артефакт другого этапа или пакет фрагментов доклада."""
+    refs = [ref for ref in inputs.artifacts if ref.name == name]
+    if len(refs) != 1:
+        raise ValueError(f"у этапа должен быть ровно один вход {name}")
+    return _read_checked(ctx, refs[0])
+
+
+def _read_checked(ctx: StageContext, ref: ArtifactRef) -> bytes:
+    data = ctx.storage.get(ref.storage_key)
+    if sha256_hex(data) != ref.sha256:
+        raise ValueError(f"хэш {ref.storage_key} не совпадает с указанным во входе")
+    return data
 
 
 def publish(

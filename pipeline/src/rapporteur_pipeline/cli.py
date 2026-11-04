@@ -1,6 +1,7 @@
-"""Запуск этапа из командной строки без веба и БД (ADR-007):
+"""Запуск этапов из командной строки без веба и БД (ADR-007):
 
     rapporteur run slides ./Конференция --data-dir ./.rapporteur-data
+    rapporteur report ./Конференция --data-dir ./.rapporteur-data --unreviewed
     rapporteur graph
 
 Каждый подходящий файл папки кладётся в хранилище по хэшу и обрабатывается отдельно. Ошибка
@@ -9,6 +10,8 @@
 """
 
 import argparse
+import datetime as dt
+import os
 import sys
 import tempfile
 from collections.abc import Sequence
@@ -17,9 +20,18 @@ from pathlib import Path
 
 from rapporteur_contracts import ArtifactRef, NotesArtifact, SlidesArtifact, StageInputs
 from rapporteur_contracts.artifacts import FileFailure
+from rapporteur_pipeline.chain import (
+    NOTES_SUFFIXES,
+    PRESENTATION_SUFFIXES,
+    ChainError,
+    collect_files,
+    run_report,
+)
 from rapporteur_pipeline.graph import GRAPH_FILE, GraphError, execution_order, load_graph
 from rapporteur_pipeline.ingest.notes import NotesStage
 from rapporteur_pipeline.ingest.slides import SlidesStage
+from rapporteur_pipeline.llm.client import DEFAULT_OLLAMA_URL, make_client
+from rapporteur_pipeline.llm.profiles import ProfileError, load_profile
 from rapporteur_pipeline.stage import (
     SOURCE_INPUT,
     Stage,
@@ -46,8 +58,8 @@ class StageEntry:
 
 
 STAGES: dict[str, StageEntry] = {
-    "slides": StageEntry(SlidesStage(), StubSlidesStage(), frozenset({".pptx", ".pdf", ".ppt"})),
-    "notes": StageEntry(NotesStage(), StubNotesStage(), frozenset({".txt", ".md"})),
+    "slides": StageEntry(SlidesStage(), StubSlidesStage(), PRESENTATION_SUFFIXES),
+    "notes": StageEntry(NotesStage(), StubNotesStage(), NOTES_SUFFIXES),
 }
 
 
@@ -59,16 +71,40 @@ def main(argv: Sequence[str] | None = None) -> int:
     run.add_argument("path", type=Path)
     run.add_argument("--data-dir", type=Path, default=Path(".rapporteur-data"))
     run.add_argument("--stub", action="store_true", help="заглушка вместо настоящего этапа")
+    report = commands.add_parser(
+        "report", help="справка по папке конференции: разбор, сводки по докладам, бланк"
+    )
+    report.add_argument("path", type=Path)
+    report.add_argument("--data-dir", type=Path, default=Path(".rapporteur-data"))
+    report.add_argument(
+        "--registry",
+        type=Path,
+        help="реестр докладов YAML; по умолчанию <data-dir>/registry.yaml, "
+        "без него — черновик по титульным слайдам",
+    )
+    report.add_argument("--profile", help="профиль модели из pipeline/profiles.yaml")
+    report.add_argument("--stub", action="store_true", help="заглушки вместо модели")
+    report.add_argument("--title", help="название конференции, если его нет в реестре")
+    report.add_argument("--place", help="место проведения в форме для бланка, «г. Казань»")
+    report.add_argument("--dates", type=_dates, default=[], help="даты через запятую, ГГГГ-ММ-ДД")
+    report.add_argument("--talks", type=int, help="обработать только первые N докладов")
+    report.add_argument(
+        "--unreviewed",
+        action="store_true",
+        help="подтвердить сборку с непроверенными сводками (без редактора все такие)",
+    )
     graph = commands.add_parser("graph", help="проверить граф этапов и показать порядок")
     graph.add_argument("--file", type=Path, default=GRAPH_FILE)
     args = parser.parse_args(argv)
 
     if args.command == "graph":
         return _show_graph(args.file)
+    if args.command == "report":
+        return _report(args)
 
     entry = STAGES[args.stage]
     stage = entry.stub if args.stub else entry.real
-    files = _collect(args.path, entry.suffixes)
+    files = collect_files(args.path, entry.suffixes)
     if not files:
         print(f"В {args.path} нет файлов {', '.join(sorted(entry.suffixes))}", file=sys.stderr)
         return 1
@@ -108,15 +144,51 @@ def _show_graph(path: Path) -> int:
     return 0
 
 
-def _collect(path: Path, suffixes: frozenset[str]) -> list[Path]:
-    candidates = [path] if path.is_file() else sorted(path.rglob("*"))
-    return [
-        item
-        for item in candidates
-        if item.is_file()
-        and item.suffix.lower() in suffixes
-        and not item.name.startswith((".", "~$"))
-    ]
+def _dates(value: str) -> list[dt.date]:
+    try:
+        return [dt.date.fromisoformat(part.strip()) for part in value.split(",") if part.strip()]
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(f"даты в виде ГГГГ-ММ-ДД: {error}") from error
+
+
+def _report(args: argparse.Namespace) -> int:
+    try:
+        profile = None if args.stub else load_profile(args.profile)
+    except ProfileError as error:
+        print(error, file=sys.stderr)
+        return 1
+    client = None
+    if profile is not None:
+        client = make_client(profile, os.environ.get("OLLAMA_URL", DEFAULT_OLLAMA_URL))
+        print(
+            f"Профиль {profile.name}: {profile.model}, рассуждение {profile.generation.reasoning}"
+        )
+    else:
+        print("Заглушки вместо модели: тексты сводок не настоящие")
+    try:
+        result = run_report(
+            args.path,
+            args.data_dir,
+            registry_path=args.registry,
+            profile=profile,
+            client=client,
+            title=args.title,
+            place=args.place,
+            dates=args.dates,
+            unreviewed_confirmed=args.unreviewed,
+            limit=args.talks,
+        )
+    except ChainError as error:
+        print(error, file=sys.stderr)
+        return 1
+    print("\nСправка:")
+    for path in result.files:
+        print(f"  {path}")
+    if result.failures:
+        print(f"\nНе обработано: {len(result.failures)}")
+        for failure in result.failures:
+            print(f"  {failure}")
+    return 1 if result.failures else 0
 
 
 def _run_file(stage: Stage, storage: Storage, path: Path, root: Path) -> FileFailure | None:

@@ -158,10 +158,12 @@ class SegmentsArtifact(ContractModel):
 
 
 class FactsArtifact(ContractModel):
-    """facts.json, шаг А."""
+    """facts.json, шаг А. profile и prompt_version нужны сводке для Summary.prompt_versions."""
 
     meta: ArtifactMeta
     talk_id: UUID
+    profile: NonEmptyStr
+    prompt_version: NonEmptyStr
     facts: FactsDraft
 
 
