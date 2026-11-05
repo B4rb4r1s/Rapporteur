@@ -12,6 +12,7 @@ import psycopg
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
+from rapporteur_backend.binding_benchmark import benchmark_bindings
 from rapporteur_backend.db import configured_url, make_engine
 from rapporteur_backend.migrate import migrate
 from rapporteur_backend.processing import advance_started, run_scheduler
@@ -37,6 +38,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("migrate")
     commands.add_parser("openapi").add_argument("output", type=Path)
+    benchmark = commands.add_parser("benchmark-bindings", help="оценить подсказки по разметке")
+    benchmark.add_argument("snapshot", type=Path)
+    benchmark.add_argument("reference", type=Path)
+    benchmark.add_argument("--review-seconds", type=float)
     scheduler = commands.add_parser("schedule")
     scheduler.add_argument(
         "--mode", choices=["dev", "gpu"], default=os.environ.get("RAPPORTEUR_MODE", "dev")
@@ -44,6 +49,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     scheduler.add_argument("--graph", type=Path, default=GRAPH_FILE)
     scheduler.add_argument("--once", action="store_true")
     args = parser.parse_args(argv)
+    if args.command == "benchmark-bindings":
+        return benchmark_bindings(args.snapshot, args.reference, args.review_seconds)
     if args.command == "openapi":
         from rapporteur_backend.app import create_app
 
