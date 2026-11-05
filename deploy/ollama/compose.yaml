@@ -1,25 +1,30 @@
-# Сервис Ollama (ADR-010). Модели лежат во внешнем каталоге OLLAMA_MODELS_DIR.
+# Сервис Ollama (ADR-010). Модели лежат во внешнем каталоге OLLAMA_MODELS_DIR: в нём есть
+# blobs/ и manifests/ (или manifests-v2/), как в OLLAMA_MODELS. Если каталог — домашний
+# каталог Ollama (.ollama), укажите его подкаталог models.
 # Рабочая сеть внутренняя: исходящего трафика нет, порт наружу не публикуется (spec §2, §10).
 #
 #   OLLAMA_MODELS_DIR=/путь/к/моделям docker compose -f deploy/ollama/compose.yaml up -d
 #   OLLAMA_MODELS_DIR=/путь/к/моделям docker compose -f deploy/ollama/compose.yaml run --rm pull <модель>
 #
-# Сервис pull нужен только на машине с интернетом. В изолированной сети каталог приезжает готовым.
-# Каталог должен быть доступен на запись пользователю HOST_UID: Ollama 0.40.13 создаёт в нём
-# manifests-v2 при первом запуске и без этого отвечает ошибкой 500.
+# Сервис ollama видит каталог только на чтение и ничего в нём не меняет, поэтому каталог может
+# принадлежать другому пользователю или проекту. Ollama 0.40.13 при старте переносит манифесты
+# в manifests-v2, поэтому манифесты (килобайты) копируются в память контейнера, а веса
+# подключаются ссылкой. OLLAMA_NOPRUNE запрещает удалять веса, на которые нет манифеста.
+#
+# Сервис pull нужен только на машине с интернетом и пишет в каталог, поэтому каталог должен
+# быть доступен на запись пользователю HOST_UID. В изолированной сети каталог приезжает готовым.
 name: rapporteur-ollama
 
 x-ollama: &ollama
   image: ollama/ollama:0.40.13@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429
   user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
   gpus: all
-  volumes:
-    - ${OLLAMA_MODELS_DIR:?укажите каталог с моделями}:/models
   environment:
     HOME: /tmp
     OLLAMA_HOST: 0.0.0.0:11434
     OLLAMA_MODELS: /models
     OLLAMA_NO_CLOUD: "1"
+    OLLAMA_NOPRUNE: "1"
     OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-32768}
     OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
     OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
@@ -29,6 +34,24 @@ services:
     <<: *ollama
     restart: unless-stopped
     networks: [inference]
+    volumes:
+      - ${OLLAMA_MODELS_DIR:?укажите каталог с моделями}:/models-source:ro
+    tmpfs:
+      - /models:uid=${HOST_UID:-1000},gid=${HOST_GID:-1000},mode=0700
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        if [ ! -d /models-source/blobs ]; then
+          echo "В OLLAMA_MODELS_DIR нет blobs/: укажите каталог с blobs и manifests" >&2
+          exit 1
+        fi
+        ln -s /models-source/blobs /models/blobs
+        for name in manifests manifests-v2; do
+          if [ -d "/models-source/$$name" ]; then cp -R "/models-source/$$name" /models/; fi
+        done
+        exec ollama serve
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s
@@ -40,6 +63,8 @@ services:
     <<: *ollama
     profiles: [pull]
     networks: [egress]
+    volumes:
+      - ${OLLAMA_MODELS_DIR:?укажите каталог с моделями}:/models
     entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 3; ollama pull \"$0\""]
 
 networks:

@@ -50,7 +50,8 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в корневом .env}
     ports:
       - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8000}:8000"
-    networks: [app]
+    # Порт публикуется только через сеть edge: у внутренней сети app его нет.
+    networks: [app, edge]
     volumes: [data:/data]
     depends_on:
       db:
@@ -176,6 +177,12 @@ services:
 networks:
   app:
     internal: true
+  # Только для web. Docker не публикует порты контейнера, подключённого лишь к внутренним
+  # сетям, поэтому web нужна обычная сеть. Без NAT ответы из внешних сетей не возвращаются,
+  # так что исходящий трафик закрыт (spec §2), а входящие подключения к порту работают.
+  edge:
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
 
 volumes:
   postgres:
