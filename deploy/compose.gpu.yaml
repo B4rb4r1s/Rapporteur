@@ -1,0 +1,33 @@
+# Подключается только при PROFILE=gpu: dev не требует каталога весов или GPU.
+services:
+  worker-cpu:
+    environment:
+      RAPPORTEUR_MODE: gpu
+
+  worker-gpu:
+    environment:
+      RAPPORTEUR_MODE: gpu
+      OLLAMA_URL: http://ollama:11434
+    networks: [app, inference]
+    gpus: all
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  migrate:
+    environment:
+      RAPPORTEUR_MODE: gpu
+
+  cli:
+    environment:
+      RAPPORTEUR_MODE: gpu
+
+  ollama:
+    extends:
+      file: ollama/compose.yaml
+      service: ollama
+    profiles: [gpu]
+
+networks:
+  inference:
+    internal: true

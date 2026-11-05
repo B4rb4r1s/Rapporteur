@@ -14,6 +14,7 @@ from rapporteur_contracts import (
     FactsArtifact,
     FactsDraft,
     FragmentDraft,
+    InventoryArtifact,
     NotesArtifact,
     SlidesArtifact,
     StageInputs,
@@ -21,12 +22,13 @@ from rapporteur_contracts import (
     SummaryArtifact,
     SummaryLine,
     TalkFragmentPack,
+    TranscriptArtifact,
     VerifiedClaimsArtifact,
 )
-from rapporteur_contracts.artifacts import SlideRecord, TitleCandidates
+from rapporteur_contracts.artifacts import SlideRecord, TitleCandidates, TranscriptSegment
 from rapporteur_contracts.claims import EvidenceDraft, FactDraft
 from rapporteur_contracts.enums import FragmentKind, SummaryStatus, TalkType, TextOrigin
-from rapporteur_contracts.fragments import LinesLocator, PageLocator
+from rapporteur_contracts.fragments import LinesLocator, PageLocator, TimeLocator
 from rapporteur_pipeline.ingest.limits import NotesConfig, PresentationConfig
 from rapporteur_pipeline.stage import (
     StageContext,
@@ -202,3 +204,61 @@ class StubSummaryStage:
             prompt_version=_STUB_PROFILE,
         )
         return publish(ctx, meta, SummaryArtifact(meta=meta, summary=summary), [_STUB_WARNING])
+
+
+class TranscriptStubConfig(BaseModel):
+    """У фиктивного распознавания нет параметров модели."""
+
+
+class StubInventoryStage:
+    """Пустая фиктивная инвентаризация для проверки графа в dev."""
+
+    name: ClassVar[str] = "inventory"
+    version: ClassVar[str] = "1.0.0-stub"
+    config_model: ClassVar[type[BaseModel]] = TranscriptStubConfig
+
+    def run(self, ctx: StageContext, inputs: StageInputs) -> StageOutput:
+        meta = make_meta(self, inputs, stub=True)
+        artifact = InventoryArtifact(meta=meta, files=[], failures=[])
+        return publish(ctx, meta, artifact, [_STUB_WARNING])
+
+
+class StubTranscriptStage:
+    """Фиктивная ASR для проверки worker-gpu без GPU. Звук не читается."""
+
+    name: ClassVar[str] = "asr"
+    version: ClassVar[str] = "1.0.0-stub"
+    config_model: ClassVar[type[BaseModel]] = TranscriptStubConfig
+
+    def run(self, ctx: StageContext, inputs: StageInputs) -> StageOutput:
+        source = single_source(inputs)
+        meta = make_meta(self, inputs, stub=True)
+        text = "ЗАГЛУШКА: это вымышленная расшифровка для проверки dev-профиля."
+        artifact = TranscriptArtifact(
+            meta=meta,
+            source_sha256=source.sha256,
+            engine="stub",
+            segments=[
+                TranscriptSegment(
+                    start_ms=0,
+                    end_ms=1000,
+                    text=text,
+                    confidence=None,
+                    speaker=None,
+                    low_quality=True,
+                    words=[],
+                )
+            ],
+            fragments=[
+                FragmentDraft(
+                    kind=FragmentKind.TRANSCRIPT,
+                    source_sha256=source.sha256,
+                    locator=TimeLocator(kind="time", start_ms=0, end_ms=1000),
+                    raw_text=text,
+                    normalized_text=text,
+                    origin=TextOrigin.ASR,
+                    engine_confidence=None,
+                )
+            ],
+        )
+        return publish(ctx, meta, artifact, [_STUB_WARNING])

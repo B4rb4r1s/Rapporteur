@@ -52,6 +52,8 @@ def check_zip(path: Path, limits: PresentationConfig) -> None:
                 raise _archive_error(f"в архиве {len(entries)} элементов")
             total = 0
             for entry in entries:
+                if entry.flag_bits & 1:
+                    raise StageError(FailureCode.ENCRYPTED_FILE, "Архив защищён паролем")
                 unpacked = 0
                 with archive.open(entry) as stream:
                     while chunk := stream.read(MIB):
@@ -64,7 +66,7 @@ def check_zip(path: Path, limits: PresentationConfig) -> None:
                     and unpacked > entry.compress_size * limits.max_compression_ratio
                 ):
                     raise _archive_error(f"подозрительно сильное сжатие у {entry.filename}")
-    except (zipfile.BadZipFile, EOFError, OSError) as error:
+    except (zipfile.BadZipFile, EOFError, OSError, NotImplementedError) as error:
         raise StageError(FailureCode.BROKEN_FILE, "Файл повреждён: архив pptx не читается") from (
             error
         )

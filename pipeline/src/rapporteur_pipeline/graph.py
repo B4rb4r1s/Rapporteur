@@ -36,6 +36,12 @@ def load_graph(path: Path = GRAPH_FILE) -> PipelineGraph:
 def check_graph(graph: PipelineGraph) -> None:
     problems: list[str] = []
     for stage in graph.stages:
+        if stage.scope is StageScope.FILE and any(
+            need.scope is not StageScope.CONFERENCE
+            for need in graph.stages
+            if need.name in stage.needs
+        ):
+            problems.append(f"{stage.name}: файловый этап зависит только от этапов конференции")
         model = PUBLIC_MODELS.get(stage.output)
         if model is None or "meta" not in model.model_fields:
             problems.append(f"{stage.name}: выход {stage.output} не артефакт из contracts/")
