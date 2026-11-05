@@ -9,7 +9,8 @@ import re
 from collections.abc import Sequence
 
 from rapporteur_contracts.artifacts import TitleCandidates
-from rapporteur_pipeline.ingest.pdf_reader import PdfLine
+from rapporteur_pipeline.ingest.pdf_reader import PdfLine, PdfPage
+from rapporteur_pipeline.ingest.pptx_reader import ExtractedSlide
 from rapporteur_pipeline.text import normalize_text
 
 _UPPER = "А-ЯЁ"
@@ -41,6 +42,32 @@ _MAX_CONCLUSION_TITLE = 60
 # Строки шрифтом не меньше этой доли от крупнейшего на странице считаются заголовком.
 _TITLE_FONT_SHARE = 0.9
 _MAX_PDF_TITLE = 160
+# Длинный текст в плейсхолдере может быть обычным текстом слайда.
+MAX_PLACEHOLDER_TITLE = 100
+
+
+def pptx_title(first: ExtractedSlide, heading: str | None = None) -> TitleCandidates:
+    """Название из плейсхолдера или верхнего текстового блока титульного слайда."""
+    blocks = [" ".join(block.split()) for block in map(normalize_text, first.blocks) if block]
+    if first.title is not None and len(first.title) <= MAX_PLACEHOLDER_TITLE:
+        title: str | None = " ".join(normalize_text(first.title).split())
+    elif first.title is None and blocks:
+        title = blocks[0]
+    else:
+        title = heading
+    others = [
+        line
+        for block in map(normalize_text, first.blocks)
+        if block and not (title and " ".join(block.split()) in title)
+        for line in block.split("\n")
+    ]
+    return candidates_from_lines(title, others)
+
+
+def pdf_title(first: PdfPage) -> TitleCandidates:
+    title, used = pdf_heading(first.lines)
+    others = [line.text for index, line in enumerate(first.lines) if index not in used]
+    return candidates_from_lines(title, others)
 
 
 def is_conclusion(title: str | None) -> bool:

@@ -29,12 +29,22 @@ class ExtractedSlide:
         return "\n".join(self.blocks)
 
 
-def read_pptx(path: Path) -> list[ExtractedSlide]:
+def read_pptx(
+    path: Path, *, max_pages: int | None = None, first_only: bool = False
+) -> list[ExtractedSlide]:
     try:
         presentation = Presentation(str(path))
-    except (PackageNotFoundError, KeyError, ValueError) as error:
+        slides = presentation.slides
+        if max_pages is not None and len(slides) > max_pages:
+            raise StageError(
+                FailureCode.TOO_MANY_PAGES,
+                f"В презентации {len(slides)} слайдов при лимите {max_pages}",
+            )
+        if first_only:
+            return [_read_slide(1, slides[0])] if len(slides) else []
+        return [_read_slide(number, slide) for number, slide in enumerate(slides, 1)]
+    except (PackageNotFoundError, KeyError, ValueError, SyntaxError) as error:
         raise StageError(FailureCode.BROKEN_FILE, "Файл повреждён: pptx не читается") from error
-    return [_read_slide(number, slide) for number, slide in enumerate(presentation.slides, 1)]
 
 
 def _read_slide(slide_no: int, slide: Any) -> ExtractedSlide:

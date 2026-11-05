@@ -1,0 +1,17 @@
+**
+!contracts
+!contracts/pyproject.toml
+!contracts/VERSION
+!contracts/src
+!contracts/src/**
+!pipeline
+!pipeline/pyproject.toml
+!pipeline/src
+!pipeline/src/**
+!pipeline/graph.yaml
+!workers
+!workers/pyproject.toml
+!workers/uv.lock
+!workers/src
+!workers/src/**
+**/__pycache__
