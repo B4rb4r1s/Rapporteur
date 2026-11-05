@@ -71,6 +71,7 @@ class ReviewSection(BaseModel):
 
 
 class Materials(BaseModel):
+    processing_started: bool
     files: list[Material]
     sections: list[ReviewSection]
     talks: list[ReviewTalk]
@@ -329,6 +330,13 @@ def review(conn: Connection, conference_id: UUID) -> Materials:
         if len(matches) == 1:
             file.alternate_of = matches[0].source.id
     return Materials(
+        processing_started=bool(
+            conn.scalar(
+                sa.select(t.conferences.c.processing_started).where(
+                    t.conferences.c.id == conference_id
+                )
+            )
+        ),
         files=files,
         sections=[
             ReviewSection(id=row["id"], title=row["title"])

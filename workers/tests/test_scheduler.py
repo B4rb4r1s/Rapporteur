@@ -366,7 +366,7 @@ def test_identical_source_in_two_conferences_keeps_cached_sha(
             barrier.wait(timeout=5)
             return output
 
-    monkeypatch.setattr(runtime, "get_stage", lambda _name, _mode: ConcurrentInventory())
+    monkeypatch.setattr(runtime, "get_stage", lambda _name, _mode, _config: ConcurrentInventory())
     storage = DirectoryStorage(tmp_path / "data")
     other = state.model_copy(deep=True, update={"conference_id": uuid4()})
     schedulers = [

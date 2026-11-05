@@ -1,6 +1,9 @@
 """Реестр реализованных обработчиков. Семантика графа здесь не дублируется."""
 
+from collections.abc import Mapping
+
 from rapporteur_contracts.enums import ResourceKind
+from rapporteur_pipeline.ingest.inventory_stage import InventoryStage
 from rapporteur_pipeline.stage import Stage
 from rapporteur_pipeline.stubs import (
     StubInventoryStage,
@@ -19,7 +22,9 @@ RESOURCES = {
 FILE_STAGES = frozenset({"slides", "notes", "asr"})
 
 
-def get_stage(name: str, mode: Mode) -> Stage:
+def get_stage(name: str, mode: Mode, config: Mapping[str, object] | None = None) -> Stage:
+    if name == "inventory" and config is not None and "files" in config:
+        return InventoryStage()
     if mode == "dev":
         stubs: dict[str, Stage] = {
             "inventory": StubInventoryStage(),

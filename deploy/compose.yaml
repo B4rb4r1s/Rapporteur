@@ -16,6 +16,23 @@ x-worker: &worker
     PGUSER: ${POSTGRES_USER:-rapporteur}
     PGPASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в корневом .env}
 
+x-backend: &backend
+  build:
+    context: ..
+    dockerfile: backend/Dockerfile
+  image: rapporteur-backend:local
+  user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+  environment:
+    HOME: /tmp
+    PGHOST: db
+    PGDATABASE: ${POSTGRES_DB:-rapporteur}
+    PGUSER: ${POSTGRES_USER:-rapporteur}
+    PGPASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в корневом .env}
+  networks: [app]
+  depends_on:
+    db:
+      condition: service_healthy
+
 services:
   web:
     profiles: [dev, gpu]
@@ -121,6 +138,12 @@ services:
       retries: 3
       start_period: 10s
 
+  scheduler:
+    <<: *backend
+    profiles: [dev, gpu]
+    restart: unless-stopped
+    command: [rapporteur-backend, schedule]
+
   # Эти сервисы запускаются явно и завершаются; up их не оставляет работать.
   migrate:
     <<: *worker
@@ -132,23 +155,9 @@ services:
         condition: service_healthy
 
   backend-migrate:
-    build:
-      context: ..
-      dockerfile: backend/Dockerfile
-    image: rapporteur-backend:local
-    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    <<: *backend
     profiles: [tools]
     command: [rapporteur-backend, migrate]
-    environment:
-      HOME: /tmp
-      PGHOST: db
-      PGDATABASE: ${POSTGRES_DB:-rapporteur}
-      PGUSER: ${POSTGRES_USER:-rapporteur}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в корневом .env}
-    networks: [app]
-    depends_on:
-      db:
-        condition: service_healthy
 
   cli:
     <<: *worker

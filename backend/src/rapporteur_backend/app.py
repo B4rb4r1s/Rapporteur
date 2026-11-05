@@ -62,7 +62,7 @@ def create_app(
     @app.get("/ready", response_model=Health)
     def ready(request: Request) -> Health:
         with engine(request).begin() as conn:
-            if conn.scalar(text("SELECT version_num FROM alembic_version")) != "0002_materials":
+            if conn.scalar(text("SELECT version_num FROM alembic_version")) != "0003_processing":
                 raise ApiRequestError(
                     ApiErrorCode.INTERNAL_ERROR, "Нужна совместимая миграция backend"
                 )

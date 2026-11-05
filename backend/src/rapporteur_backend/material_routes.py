@@ -7,13 +7,16 @@ from typing import Annotated
 from uuid import UUID
 
 import anyio
+import sqlalchemy as sa
 import yaml
 from fastapi import APIRouter, Query, Request, Response
+from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from rapporteur_backend import materials, store
 from rapporteur_backend import tables as t
 from rapporteur_backend.errors import API_ERRORS, ApiRequestError
+from rapporteur_backend.jobs import require_queue
 from rapporteur_backend.materials import BindingReview, Materials
 from rapporteur_backend.routes import Version, engine, etag
 from rapporteur_contracts import ApiError, SourceFile
@@ -35,6 +38,28 @@ _UPLOAD_SCHEMA = {
         "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}},
     }
 }
+
+
+class ProcessingAccepted(BaseModel):
+    status_url: str
+
+
+@router.post("/processing", status_code=202, response_model=ProcessingAccepted)
+def start_processing(request: Request, conference_id: UUID) -> ProcessingAccepted:
+    with engine(request).begin() as conn:
+        conference = store.require(conn, t.conferences, conference_id, lock=True)
+        require_queue(conn)
+        if not conference["processing_started"]:
+            if not conn.scalar(
+                sa.select(sa.exists().where(t.source_files.c.conference_id == conference_id))
+            ):
+                raise ApiRequestError(ApiErrorCode.VALIDATION_ERROR, "Сначала загрузите материалы")
+            conn.execute(
+                sa.update(t.conferences)
+                .where(t.conferences.c.id == conference_id)
+                .values(processing_started=True)
+            )
+    return ProcessingAccepted(status_url=f"/api/v1/jobs?conference_id={conference_id}")
 
 
 @router.post(

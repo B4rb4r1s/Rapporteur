@@ -6,6 +6,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "rapporteur-contracts",
     "rapporteur-pipeline",
+    "rapporteur-workers",
     "pyyaml>=6.0,<7",
     "sqlalchemy>=2.0,<2.1",
     "alembic>=1.17,<2",
@@ -42,6 +43,7 @@ exclude-newer = "2026-10-20T00:00:00Z"
 [tool.uv.sources]
 rapporteur-contracts = { path = "../contracts", editable = true }
 rapporteur-pipeline = { path = "../pipeline", editable = true }
+rapporteur-workers = { path = "../workers", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -58,7 +60,7 @@ select = ["E", "F", "I", "UP", "B", "N", "RUF"]
 ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["rapporteur_backend", "rapporteur_contracts", "rapporteur_pipeline"]
+known-first-party = ["rapporteur_backend", "rapporteur_contracts", "rapporteur_pipeline", "rapporteur_workers"]
 
 [tool.mypy]
 python_version = "3.12"
