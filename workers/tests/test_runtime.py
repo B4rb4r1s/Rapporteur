@@ -113,7 +113,7 @@ def test_cancelled_running_stage_never_publishes(
     job_id = enqueue_file(queue, storage, "notes", "dev", source)
     job = queue.claim(ResourceKind.CPU, "dev")
     assert job is not None
-    monkeypatch.setattr(runtime, "get_stage", lambda _name, _mode: BlockingStage())
+    monkeypatch.setattr(runtime, "get_stage", lambda _name, _mode, _config: BlockingStage())
     with ThreadPoolExecutor(max_workers=1) as pool:
         result = pool.submit(execute, queue, job, storage, tmp_path / "health")
         assert ready.wait(5)
@@ -140,7 +140,7 @@ def test_heartbeat_keeps_slow_stage_alive(
     enqueue_file(short, storage, "notes", "dev", source)
     job = short.claim(ResourceKind.CPU, "dev")
     assert job is not None
-    monkeypatch.setattr(runtime, "get_stage", lambda _name, _mode: SlowStage())
+    monkeypatch.setattr(runtime, "get_stage", lambda _name, _mode, _config: SlowStage())
     health = tmp_path / "health"
     assert execute(short, job, storage, health)
     assert healthy(health, ResourceKind.CPU, "dev")

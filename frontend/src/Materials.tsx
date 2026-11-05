@@ -25,7 +25,7 @@ type Material = {
   confidence: number | null;
   alternate_of: string | null;
 };
-type Review = { files: Material[]; sections: Section[]; talks: Talk[] };
+type Review = { processing_started: boolean; files: Material[]; sections: Section[]; talks: Talk[] };
 const json = { 'Content-Type': 'application/json' };
 
 const kinds: Record<Material['source']['kind'], string> = {
@@ -168,6 +168,23 @@ export function Materials({ conferenceId }: { conferenceId: string }) {
     if (files.length) void upload(files);
   }
 
+  async function startProcessing() {
+    setErrors([]);
+    setStatus('');
+    setBusy('Запуск обработки…');
+    try {
+      await request(`${base}/processing`, { method: 'POST' });
+      setSnapshot((previous) => previous && ({
+        ...previous, review: { ...previous.review, processing_started: true },
+      }));
+      setStatus('Обработка запрошена.');
+    } catch (reason) {
+      setErrors([(reason as Error).message]);
+    } finally {
+      setBusy('');
+    }
+  }
+
   async function addTalk() {
     if (!snapshot || !talkTitle.trim()) return;
     setErrors([]);
@@ -307,6 +324,11 @@ export function Materials({ conferenceId }: { conferenceId: string }) {
         </>
       )}
       {snapshot && <p><a href={`${base}/conference.yaml`}>Скачать conference.yaml</a></p>}
+      {snapshot?.review.processing_started
+        ? <p><a href={`/api/v1/jobs?conference_id=${conferenceId}`}>Задачи обработки (JSON)</a></p>
+        : files.length > 0 && (
+          <p><button disabled={!!busy} onClick={() => void startProcessing()}>Запустить обработку</button></p>
+        )}
       <button disabled={!!busy} onClick={() => {
         setErrors([]);
         setBusy('Обновление…');

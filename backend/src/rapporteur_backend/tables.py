@@ -32,6 +32,7 @@ conferences = sa.Table(
     sa.Column("end_date", sa.Date),
     sa.Column("place", sa.Text),
     sa.Column("organizer", sa.Text),
+    sa.Column("processing_started", sa.Boolean, nullable=False, server_default=sa.false()),
 )
 sections = sa.Table(
     "sections",

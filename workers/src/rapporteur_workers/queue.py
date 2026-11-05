@@ -58,8 +58,12 @@ def migrate(dsn: str) -> None:
             ).fetchall()
             if versions != [(1,)]:
                 raise RuntimeError("Неизвестная версия схемы очереди; нужен совместимый образ")
-            return
-        conn.execute(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
+        else:
+            conn.execute(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS jobs_conference_mode "
+            "ON rapporteur_queue.jobs ((inputs->>'conference_id'), mode)"
+        )
 
 
 class Queue:
