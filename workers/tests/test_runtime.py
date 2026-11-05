@@ -200,7 +200,8 @@ def test_cli_processes_migrate_work_and_report_health(dsn: str, tmp_path: Path) 
                     env=env,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+                    # Флаг есть только на Windows; на остальных платформах 0.
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
             )
         result = subprocess.run([*command, "smoke"], env=env, capture_output=True, timeout=15)
