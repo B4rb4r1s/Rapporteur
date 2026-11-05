@@ -198,8 +198,11 @@ def plan(
             if not set(spec.gates) <= gates:
                 decision.reason = "human_gates_not_confirmed"
                 continue
+            raw_config = state.configs.get(name, {})
             try:
-                handler = get_stage(name, mode) if handlers is None else handlers.get(name)
+                handler = (
+                    get_stage(name, mode, raw_config) if handlers is None else handlers.get(name)
+                )
             except ValueError:
                 handler = None
             if handler is None:
@@ -207,7 +210,7 @@ def plan(
                 continue
             if handler.name != name or (handlers is None and RESOURCES[name] != spec.resource):
                 raise ValueError("Обработчик не соответствует имени или ресурсу этапа")
-            config = handler.config_model.model_validate(state.configs.get(name, {}))
+            config = handler.config_model.model_validate(raw_config)
             cfg_hash = config_hash(config)
             if spec.scope is StageScope.FILE:
                 assert target.source is not None

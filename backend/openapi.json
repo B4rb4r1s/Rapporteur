@@ -2496,6 +2496,76 @@
         }
       }
     },
+    "/api/v1/conferences/{conference_id}/processing": {
+      "post": {
+        "summary": "Start Processing",
+        "operationId": "start_processing_api_v1_conferences__conference_id__processing_post",
+        "parameters": [
+          {
+            "name": "conference_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conference Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessingAccepted"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/api/v1/conferences/{conference_id}/materials": {
       "post": {
         "summary": "Upload Material",
@@ -3508,6 +3578,10 @@
       },
       "Materials": {
         "properties": {
+          "processing_started": {
+            "type": "boolean",
+            "title": "Processing Started"
+          },
           "files": {
             "items": {
               "$ref": "#/components/schemas/Material"
@@ -3532,6 +3606,7 @@
         },
         "type": "object",
         "required": [
+          "processing_started",
           "files",
           "sections",
           "talks"
@@ -3788,6 +3863,19 @@
           "priority"
         ],
         "title": "PriorityWrite"
+      },
+      "ProcessingAccepted": {
+        "properties": {
+          "status_url": {
+            "type": "string",
+            "title": "Status Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status_url"
+        ],
+        "title": "ProcessingAccepted"
       },
       "Report": {
         "properties": {

@@ -20,6 +20,7 @@ test('показывает название приложения', async () => {
 
 test('сохраняет ручную привязку с версией последнего просмотра', async () => {
   const review = {
+    processing_started: false,
     sections: [{ id: 'section', title: 'Секция' }],
     files: [{
       source: { id: 'file', kind: 'presentation', encoding: null, duration_ms: null },
@@ -44,7 +45,10 @@ test('сохраняет ручную привязку с версией пос�
     .mockResolvedValueOnce(Response.json({
       ...review,
       files: [{ ...review.files[0], binding: { confirmed: true, talk_id: 'second' } }],
-    }, { headers: { ETag: '"5"' } }));
+    }, { headers: { ETag: '"5"' } }))
+    .mockResolvedValueOnce(Response.json({
+      status_url: '/api/v1/jobs?conference_id=conference',
+    }, { status: 202 }));
   vi.stubGlobal('fetch', api);
   render(<App />);
 
@@ -62,4 +66,9 @@ test('сохраняет ручную привязку с версией пос�
     body: JSON.stringify({ bindings: [{ source_file_id: 'file', talk_id: 'second' }] }),
   });
   expect(select.value).toBe('second');
+  fireEvent.click(screen.getByRole('button', { name: 'Запустить обработку' }));
+  await screen.findByText('Обработка запрошена.');
+  expect(api).toHaveBeenLastCalledWith('/api/v1/conferences/conference/processing', { method: 'POST' });
+  expect(screen.getByRole('link', { name: 'Задачи обработки (JSON)' }).getAttribute('href'))
+    .toBe('/api/v1/jobs?conference_id=conference');
 });

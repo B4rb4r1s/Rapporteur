@@ -91,7 +91,7 @@ def execute(queue: Queue, job: QueueJob, storage: Storage, health_file: Path) ->
     thread = threading.Thread(target=keep_lease, daemon=True)
     thread.start()
     try:
-        stage = get_stage(job.stage, job.mode)
+        stage = get_stage(job.stage, job.mode, job.config)
         if RESOURCES[job.stage] != job.resource:
             raise ValueError("Ресурс задачи не соответствует этапу")
         config = stage.config_model.model_validate(job.config)

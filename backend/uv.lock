@@ -664,6 +664,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "rapporteur-contracts" },
     { name = "rapporteur-pipeline" },
+    { name = "rapporteur-workers" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
 ]
@@ -686,6 +687,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0,<7" },
     { name = "rapporteur-contracts", editable = "../contracts" },
     { name = "rapporteur-pipeline", editable = "../pipeline" },
+    { name = "rapporteur-workers", editable = "../workers" },
     { name = "sqlalchemy", specifier = ">=2.0,<2.1" },
     { name = "uvicorn", specifier = ">=0.54,<0.55" },
 ]
@@ -755,6 +757,28 @@ dev = [
     { name = "pytest", specifier = ">=9.1,<9.2" },
     { name = "ruff", specifier = ">=0.17,<0.18" },
     { name = "types-pyyaml", specifier = ">=6.0.12,<6.1" },
+]
+
+[[package]]
+name = "rapporteur-workers"
+version = "0.1.0"
+source = { editable = "../workers" }
+dependencies = [
+    { name = "psycopg", extra = ["binary"] },
+    { name = "rapporteur-pipeline" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3,<3.4" },
+    { name = "rapporteur-pipeline", editable = "../pipeline" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=2.4,<2.5" },
+    { name = "pytest", specifier = ">=9.1,<9.2" },
+    { name = "ruff", specifier = ">=0.17,<0.18" },
 ]
 
 [[package]]
