@@ -55,6 +55,15 @@ class DirectoryStorage:
             tmp.write(data)
         os.replace(tmp.name, path)
 
+    def add_blob(self, sha256: str, staged: Path) -> None:
+        """Публикует готовый файл с того же тома без копирования и перезаписи."""
+        path = self._path(blob_key(sha256))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.link(staged, path)
+        except FileExistsError:
+            pass
+
     def get(self, key: str) -> bytes:
         return self._path(key).read_bytes()
 

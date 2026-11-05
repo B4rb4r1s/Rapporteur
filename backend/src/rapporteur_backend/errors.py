@@ -16,8 +16,16 @@ from rapporteur_contracts.enums import API_ERROR_STATUS, ApiErrorCode
 
 
 class ApiRequestError(Exception):
-    def __init__(self, code: ApiErrorCode, message: str) -> None:
+    def __init__(
+        self,
+        code: ApiErrorCode,
+        message: str,
+        *,
+        status: int | None = None,
+        details: dict[str, object] | None = None,
+    ) -> None:
         self.code, self.message = code, message
+        self.status, self.details = status, details
 
 
 API_ERRORS: dict[int | str, dict[str, Any]] = {
@@ -52,7 +60,9 @@ def install_errors(app: FastAPI) -> None:
 
     @app.exception_handler(ApiRequestError)
     async def api_failure(request: Request, exc: ApiRequestError) -> JSONResponse:
-        return error_response(request, exc.code, exc.message)
+        return error_response(
+            request, exc.code, exc.message, status=exc.status, details=exc.details
+        )
 
     @app.exception_handler(RequestValidationError)
     async def validation(request: Request, exc: RequestValidationError) -> JSONResponse:

@@ -3,7 +3,7 @@ name: rapporteur-backend
 x-host-user: &host-user "${HOST_UID:-1000}:${HOST_GID:-1000}"
 
 x-py: &py
-  build:
+  build: &backend-build
     context: ..
     dockerfile: backend/Dockerfile
   image: rapporteur-backend-dev:local
@@ -12,6 +12,7 @@ x-py: &py
   volumes:
     - .:/repo/backend
     - ../contracts:/repo/contracts:ro
+    - ../pipeline:/repo/pipeline:ro
     - ../workers:/repo/workers:ro
   environment:
     HOME: /tmp
@@ -28,6 +29,11 @@ services:
   web:
     <<: *py
     profiles: [run]
+    volumes:
+      - .:/repo/backend
+      - ../contracts:/repo/contracts:ro
+      - ../pipeline:/repo/pipeline:ro
+      - materials:/data
     environment: &database-env
       HOME: /tmp
       PGHOST: db
@@ -38,9 +44,26 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      init-data:
+        condition: service_completed_successfully
     command: ["uvicorn", "rapporteur_backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8000}:8000"
+
+  init-data:
+    build: *backend-build
+    image: rapporteur-backend-dev:local
+    profiles: [run]
+    user: "0:0"
+    network_mode: none
+    volumes: [materials:/data]
+    environment:
+      HOST_UID: ${HOST_UID:-1000}
+      HOST_GID: ${HOST_GID:-1000}
+    command:
+      - python
+      - -c
+      - "import os; os.chown('/data', int(os.environ['HOST_UID']), int(os.environ['HOST_GID']))"
 
   migrate:
     <<: *py
@@ -72,3 +95,4 @@ networks:
 
 volumes:
   postgres:
+  materials:

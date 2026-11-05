@@ -4,6 +4,10 @@
 !contracts/VERSION
 !contracts/src
 !contracts/src/**
+!pipeline
+!pipeline/pyproject.toml
+!pipeline/src
+!pipeline/src/**
 !backend
 !backend/pyproject.toml
 !backend/uv.lock

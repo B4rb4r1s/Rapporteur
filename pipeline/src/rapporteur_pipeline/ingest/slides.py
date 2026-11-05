@@ -17,7 +17,13 @@ from rapporteur_pipeline.ingest.limits import PresentationConfig, check_size, ch
 from rapporteur_pipeline.ingest.pdf_reader import open_pdf, read_page
 from rapporteur_pipeline.ingest.pptx_reader import ExtractedSlide, read_pptx
 from rapporteur_pipeline.ingest.render import pptx_to_pdf, render_page
-from rapporteur_pipeline.ingest.titles import candidates_from_lines, is_conclusion, pdf_heading
+from rapporteur_pipeline.ingest.titles import (
+    MAX_PLACEHOLDER_TITLE,
+    is_conclusion,
+    pdf_heading,
+    pdf_title,
+    pptx_title,
+)
 from rapporteur_pipeline.stage import (
     FailureCode,
     StageContext,
@@ -28,9 +34,6 @@ from rapporteur_pipeline.stage import (
 )
 from rapporteur_pipeline.storage import derived_key
 from rapporteur_pipeline.text import normalize_text
-
-# Длинный текст в плейсхолдере заголовка — обычный текст слайда, а не заголовок.
-_MAX_PLACEHOLDER_TITLE = 100
 
 
 @dataclass(frozen=True)
@@ -97,8 +100,7 @@ def _parse_pptx(data: bytes, work: Path, config: PresentationConfig) -> _Parsed:
     path = work / "source.pptx"
     path.write_bytes(data)
     check_zip(path, config)
-    slides = read_pptx(path)
-    _check_pages(len(slides), config)
+    slides = read_pptx(path, max_pages=config.max_pages)
     if not slides:
         raise StageError(FailureCode.BROKEN_FILE, "В презентации нет слайдов")
 
@@ -113,7 +115,7 @@ def _parse_pptx(data: bytes, work: Path, config: PresentationConfig) -> _Parsed:
     except BaseException:
         pdf.close()
         raise
-    title = _pptx_title(slides[0], headings[0])
+    title = pptx_title(slides[0], headings[0])
     slides = [
         _with_heading(slide, heading) for slide, heading in zip(slides, headings, strict=True)
     ]
@@ -123,28 +125,9 @@ def _parse_pptx(data: bytes, work: Path, config: PresentationConfig) -> _Parsed:
 def _with_heading(slide: ExtractedSlide, heading: str | None) -> ExtractedSlide:
     """Плейсхолдер заголовка бывает пуст или занят обычным текстом. Тогда заголовком считается
     самый крупный текст на странице, которую нарисовал LibreOffice: шрифты там уже вычислены."""
-    if slide.title is not None and len(slide.title) <= _MAX_PLACEHOLDER_TITLE:
+    if slide.title is not None and len(slide.title) <= MAX_PLACEHOLDER_TITLE:
         return slide
     return replace(slide, title=heading)
-
-
-def _pptx_title(first: ExtractedSlide, heading: str | None) -> TitleCandidates:
-    """Название с титульного слайда по фигурам: плейсхолдер, иначе верхний блок. Строки PDF
-    здесь хуже: соседние надписи PDFium склеивает в одну строку с названием."""
-    blocks = [" ".join(block.split()) for block in map(normalize_text, first.blocks) if block]
-    if first.title is not None and len(first.title) <= _MAX_PLACEHOLDER_TITLE:
-        title: str | None = " ".join(normalize_text(first.title).split())
-    elif first.title is None and blocks:
-        title = blocks[0]
-    else:
-        title = heading
-    others = [
-        line
-        for block in map(normalize_text, first.blocks)
-        if block and not (title and " ".join(block.split()) in title)
-        for line in block.split("\n")
-    ]
-    return candidates_from_lines(title, others)
 
 
 def _parse_pdf(data: bytes, work: Path, config: PresentationConfig) -> _Parsed:
@@ -174,10 +157,7 @@ def _parse_pdf(data: bytes, work: Path, config: PresentationConfig) -> _Parsed:
             )
         )
 
-    first_lines = pages[0].lines
-    title, used = pdf_heading(first_lines)
-    others = [line.text for index, line in enumerate(first_lines) if index not in used]
-    return _Parsed(slides=slides, title=candidates_from_lines(title, others), pdf=pdf)
+    return _Parsed(slides=slides, title=pdf_title(pages[0]), pdf=pdf)
 
 
 def _check_pages(count: int, config: PresentationConfig) -> None:

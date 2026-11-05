@@ -51,7 +51,7 @@ def test_migration_is_idempotent_and_seeds_local(database: Engine) -> None:
         assert [tuple(row) for row in conn.execute(sa.select(t.users))] == [
             (LOCAL_USER_ID, "local")
         ]
-        assert conn.scalar(sa.text("SELECT version_num FROM alembic_version")) == "0001_domain"
+        assert conn.scalar(sa.text("SELECT version_num FROM alembic_version")) == "0002_materials"
 
 
 def test_conference_crud_and_etag(client: TestClient, database: Engine) -> None:

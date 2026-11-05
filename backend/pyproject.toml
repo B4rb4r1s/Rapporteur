@@ -5,8 +5,11 @@ description = "Backend «Репортёра»: FastAPI (spec §8, §11)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "rapporteur-contracts",
+    "rapporteur-pipeline",
+    "pyyaml>=6.0,<7",
     "sqlalchemy>=2.0,<2.1",
     "alembic>=1.17,<2",
+    "anyio>=4.11,<5",
     "psycopg[binary]>=3.3,<3.4",
     "fastapi>=0.150,<0.151",
     "uvicorn>=0.54,<0.55",
@@ -19,6 +22,7 @@ dev = [
     "mypy>=2.4,<2.5",
     "pytest>=9.1,<9.2",
     "ruff>=0.17,<0.18",
+    "types-pyyaml>=6.0.12,<6.1",
 ]
 
 [project.scripts]
@@ -37,6 +41,7 @@ exclude-newer = "2026-10-20T00:00:00Z"
 
 [tool.uv.sources]
 rapporteur-contracts = { path = "../contracts", editable = true }
+rapporteur-pipeline = { path = "../pipeline", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -53,7 +58,7 @@ select = ["E", "F", "I", "UP", "B", "N", "RUF"]
 ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["rapporteur_backend", "rapporteur_contracts"]
+known-first-party = ["rapporteur_backend", "rapporteur_contracts", "rapporteur_pipeline"]
 
 [tool.mypy]
 python_version = "3.12"

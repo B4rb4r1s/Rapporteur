@@ -2496,6 +2496,368 @@
         }
       }
     },
+    "/api/v1/conferences/{conference_id}/materials": {
+      "post": {
+        "summary": "Upload Material",
+        "operationId": "upload_material_api_v1_conferences__conference_id__materials_post",
+        "parameters": [
+          {
+            "name": "conference_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conference Id"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "title": "Path"
+            }
+          },
+          {
+            "name": "program",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Program"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceFile"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceFile"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Review Materials",
+        "operationId": "review_materials_api_v1_conferences__conference_id__materials_get",
+        "parameters": [
+          {
+            "name": "conference_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conference Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Materials"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/conferences/{conference_id}/materials/bindings": {
+      "put": {
+        "summary": "Confirm Materials",
+        "operationId": "confirm_materials_api_v1_conferences__conference_id__materials_bindings_put",
+        "parameters": [
+          {
+            "name": "conference_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conference Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32,
+              "description": "Сильный ETag последнего чтения, например \"1\"",
+              "title": "If-Match"
+            },
+            "description": "Сильный ETag последнего чтения, например \"1\""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindingReview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Materials"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/conferences/{conference_id}/conference.yaml": {
+      "get": {
+        "summary": "Export Registry",
+        "operationId": "export_registry_api_v1_conferences__conference_id__conference_yaml_get",
+        "parameters": [
+          {
+            "name": "conference_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conference Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/yaml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -2588,6 +2950,51 @@
           "internal_error"
         ],
         "title": "ApiErrorCode"
+      },
+      "BindingChoice": {
+        "properties": {
+          "source_file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source File Id"
+          },
+          "talk_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talk Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_file_id",
+          "talk_id"
+        ],
+        "title": "BindingChoice"
+      },
+      "BindingReview": {
+        "properties": {
+          "bindings": {
+            "items": {
+              "$ref": "#/components/schemas/BindingChoice"
+            },
+            "type": "array",
+            "title": "Bindings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bindings"
+        ],
+        "title": "BindingReview"
       },
       "Conference": {
         "properties": {
@@ -2748,6 +3155,71 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ConferenceWrite"
+      },
+      "FileBinding": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "source_file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source File Id"
+          },
+          "talk_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talk Id"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "source_file_id",
+          "talk_id",
+          "confirmed",
+          "confidence"
+        ],
+        "title": "FileBinding",
+        "description": "Привязка файла. talk_id пуст, если файл относится к конференции целиком."
+      },
+      "FileKind": {
+        "type": "string",
+        "enum": [
+          "presentation",
+          "audio",
+          "video",
+          "notes",
+          "program"
+        ],
+        "title": "FileKind"
       },
       "Health": {
         "properties": {
@@ -2954,6 +3426,117 @@
           "cancel_requested"
         ],
         "title": "JobStatus"
+      },
+      "Material": {
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/SourceFile"
+          },
+          "relative_path": {
+            "type": "string",
+            "title": "Relative Path"
+          },
+          "title_candidates": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TitleCandidates"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning"
+          },
+          "binding": {
+            "$ref": "#/components/schemas/FileBinding"
+          },
+          "suggested_talk_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Talk Id"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "alternate_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternate Of"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "relative_path",
+          "title_candidates",
+          "warning",
+          "binding"
+        ],
+        "title": "Material"
+      },
+      "Materials": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/Material"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewSection"
+            },
+            "type": "array",
+            "title": "Sections"
+          },
+          "talks": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewTalk"
+            },
+            "type": "array",
+            "title": "Talks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files",
+          "sections",
+          "talks"
+        ],
+        "title": "Materials"
       },
       "PageMeta": {
         "properties": {
@@ -3596,6 +4179,71 @@
         ],
         "title": "ResourceKind"
       },
+      "ReviewSection": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "ReviewSection"
+      },
+      "ReviewTalk": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "section_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Section Id"
+          },
+          "section": {
+            "type": "string",
+            "title": "Section"
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TalkStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "section_id",
+          "section",
+          "order",
+          "title",
+          "status"
+        ],
+        "title": "ReviewTalk"
+      },
       "Section": {
         "properties": {
           "id": {
@@ -3733,6 +4381,82 @@
         ],
         "title": "SkippedTalk",
         "description": "Выбранный доклад, который не вошёл в справку. Показывается пользователю."
+      },
+      "SourceFile": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "conference_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conference Id"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256"
+          },
+          "original_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Original Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FileKind"
+          },
+          "media_type": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Media Type"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Size Bytes"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "encoding": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encoding"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "conference_id",
+          "sha256",
+          "original_name",
+          "kind",
+          "media_type",
+          "size_bytes",
+          "duration_ms",
+          "encoding"
+        ],
+        "title": "SourceFile",
+        "description": "Файл конференции. Оригинал на томе общий по SHA-256, эта запись — у каждой своя."
       },
       "Talk": {
         "properties": {
@@ -3949,6 +4673,47 @@
         "additionalProperties": false,
         "type": "object",
         "title": "TalkWrite"
+      },
+      "TitleCandidates": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "speakers": {
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Speakers"
+          },
+          "affiliations": {
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Affiliations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "speakers",
+          "affiliations"
+        ],
+        "title": "TitleCandidates",
+        "description": "Кандидаты с титульного слайда. Пустое поле означает «не найдено»."
       }
     }
   }
