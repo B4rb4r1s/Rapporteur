@@ -55,6 +55,10 @@ class SummaryHandler(FactsHandler):
     name: ClassVar[str] = "summary"
 
 
+class PackHandler(FactsHandler):
+    name: ClassVar[str] = "pack"
+
+
 class SegmentHandler(FactsHandler):
     name: ClassVar[str] = "segment"
 
@@ -66,6 +70,7 @@ def handlers() -> dict[str, Stage]:
         StubNotesStage(),
         StubSlidesStage(),
         StubTranscriptStage(),
+        PackHandler(),
         FactsHandler(),
         VerifyHandler(),
         SummaryHandler(),
@@ -154,7 +159,7 @@ def test_only_inventory_is_ready_initially(
     assert not state.gates  # Автоматическое подтверждение не меняет переданный снимок.
 
 
-def test_human_binding_gate_blocks_facts(
+def test_human_binding_gate_blocks_talk_pack(
     state: ConferenceState, handlers: dict[str, Stage]
 ) -> None:
     jobs = complete_stages(state, handlers, {"inventory", "notes"})
@@ -163,7 +168,7 @@ def test_human_binding_gate_blocks_facts(
     assert all(
         item.reason == "human_gates_not_confirmed"
         for item in result.decisions
-        if item.stage == "facts"
+        if item.stage == "pack"
     )
     state.gates.add(HumanGate.BINDING_CONFIRMED)
     assert len(plan(load_graph(), state, jobs, "dev", handlers).ready) == 2
@@ -176,10 +181,10 @@ def test_talk_waits_only_for_its_files(state: ConferenceState, handlers: dict[st
     first = next(job for job in pending if job.inputs.artifacts == [state.files[0].source])
     jobs.append(completed(first, handlers))
     result = plan(load_graph(), state, jobs, "dev", handlers)
-    facts = [job for job in result.ready if job.stage == "facts"]
-    assert len(facts) == 1 and facts[0].inputs.talk_id == state.talks[0].id
+    pack = [job for job in result.ready if job.stage == "pack"]
+    assert len(pack) == 1 and pack[0].inputs.talk_id == state.talks[0].id
     assert jobs[-1].output is not None
-    assert facts[0].inputs.artifacts == [jobs[-1].output.artifact]
+    assert pack[0].inputs.artifacts == [jobs[-1].output.artifact]
 
 
 def test_conference_waits_for_all_recordings(
@@ -209,7 +214,7 @@ def test_boundaries_are_required_when_recordings_exist(
     assert not plan(load_graph(), state, jobs, "dev", handlers).ready
     state.gates.add(HumanGate.BOUNDARIES_CONFIRMED)
     assert all(
-        job.stage == "facts" for job in plan(load_graph(), state, jobs, "dev", handlers).ready
+        job.stage == "pack" for job in plan(load_graph(), state, jobs, "dev", handlers).ready
     )
 
 
@@ -232,7 +237,7 @@ def test_only_file_failures_complete_file_dependencies(
     )
     jobs = [failed if job.id == failed.id else job for job in jobs]
     result = plan(load_graph(), state, jobs, "dev", handlers)
-    assert len([job for job in result.ready if job.stage == "facts"]) == (2 if unblocks else 1)
+    assert len([job for job in result.ready if job.stage == "pack"]) == (2 if unblocks else 1)
     assert any(item.state == "file_failure" for item in result.decisions) is unblocks
 
 
@@ -398,14 +403,17 @@ def test_talk_to_talk_dependency_never_uses_another_talk(
     state: ConferenceState, handlers: dict[str, Stage]
 ) -> None:
     state.gates.add(HumanGate.BINDING_CONFIRMED)
-    jobs = complete_stages(state, handlers, {"inventory", "notes"})
+    jobs = complete_stages(state, handlers, {"inventory", "notes", "pack"})
+    packs = {job.inputs.talk_id: job.output for job in jobs if job.stage == "pack"}
     facts = plan(load_graph(), state, jobs, "dev", handlers).ready
     jobs.append(completed(facts[0], handlers))
     result = plan(load_graph(), state, jobs, "dev", handlers)
     verify = [job for job in result.ready if job.stage == "verify"]
     assert len(verify) == 1 and verify[0].inputs.talk_id == facts[0].inputs.talk_id
-    assert jobs[-1].output is not None
-    assert verify[0].inputs.artifacts == [jobs[-1].output.artifact]
+    own_pack = packs[facts[0].inputs.talk_id]
+    assert jobs[-1].output is not None and own_pack is not None
+    # Пакет — отдельный вход сверки, и только свой (ADR-013).
+    assert verify[0].inputs.artifacts == [jobs[-1].output.artifact, own_pack.artifact]
 
 
 def test_config_change_invalidates_completed_stage(

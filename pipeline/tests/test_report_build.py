@@ -285,6 +285,22 @@ def test_markdown_has_the_same_text_as_docx() -> None:
     assert r"\[по замерам\]" in markdown
 
 
+def test_talks_without_speakers_leave_no_empty_parentheses() -> None:
+    """Доклад из папки без реестра докладчиков: ни «()», ни «выступили 0 докладчиков»."""
+    bare = [talk.model_copy(update={"participants": []}) for talk in TALKS]
+    sources = ReportSources(
+        conference=CONFERENCE, sections=SECTIONS, talks=bare, people=PEOPLE, summaries=SUMMARIES
+    )
+    assembled = build_report_input(sources, select_talks(sources), "starter-1", True)
+    context = template_context(assembled.input, report_variables(assembled.input))
+
+    text = paragraphs(render_docx(load_template(STARTER), context))
+
+    assert not any("()" in line or "докладчик" in line for line in text)
+    assert any(squeeze(line).endswith("заслушано3доклада.") for line in text)
+    assert any(squeeze(line) == "1.«Кэшированиезапросов»" for line in text)
+
+
 def test_markdown_escapes_line_start_markup() -> None:
     document = Document()
     document.add_paragraph("# не заголовок")

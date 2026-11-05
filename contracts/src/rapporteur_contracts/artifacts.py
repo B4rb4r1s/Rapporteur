@@ -16,8 +16,8 @@ from rapporteur_contracts.base import (
 from rapporteur_contracts.claims import Claim, FactsDraft, Summary
 from rapporteur_contracts.entities import Segment
 from rapporteur_contracts.enums import FileKind
-from rapporteur_contracts.fragments import FragmentDraft
-from rapporteur_contracts.reports import ReportFile, ReportVariables
+from rapporteur_contracts.fragments import FragmentDraft, TalkFragmentPack
+from rapporteur_contracts.reports import ReportFile, ReportInput, ReportVariables
 
 
 class ArtifactMeta(ContractModel):
@@ -157,6 +157,13 @@ class SegmentsArtifact(ContractModel):
     unmatched_talk_ids: list[UUID]
 
 
+class PackArtifact(ContractModel):
+    """pack.json: пакет фрагментов одного доклада, общий вход шагов сводки (ADR-013)."""
+
+    meta: ArtifactMeta
+    pack: TalkFragmentPack
+
+
 class FactsArtifact(ContractModel):
     """facts.json, шаг А. profile и prompt_version нужны сводке для Summary.prompt_versions."""
 
@@ -183,9 +190,10 @@ class SummaryArtifact(ContractModel):
 
 
 class ReportArtifact(ContractModel):
-    """Выдача сборки справки."""
+    """Выдача задачи report. input, variables и files переходят в ReportVersion (ADR-013)."""
 
     meta: ArtifactMeta
     report_id: UUID
+    input: ReportInput
     variables: ReportVariables
     files: list[ReportFile]

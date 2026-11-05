@@ -32,11 +32,13 @@ def check_version(row: RowMapping, expected: int) -> None:
         raise ApiRequestError(ApiErrorCode.VERSION_CONFLICT, "Объект изменён: обновите данные")
 
 
-def create(conn: Connection, table: Table, values: dict[str, Any]) -> RowMapping:
+def create(
+    conn: Connection, table: Table, values: dict[str, Any], *, entity_id: UUID | None = None
+) -> RowMapping:
     row = (
         conn.execute(
             sa.insert(table)
-            .values(id=uuid4(), version=1, edited_by=LOCAL_USER_ID, **values)
+            .values(id=entity_id or uuid4(), version=1, edited_by=LOCAL_USER_ID, **values)
             .returning(table)
         )
         .mappings()

@@ -1,13 +1,24 @@
 """Вымышленный доклад для шагов сводки: пакет, ответы модели, профиль (P1-06, P1-08)."""
 
+import datetime as dt
 import json
 import uuid
 from typing import Any
 
-from rapporteur_contracts import FragmentDraft, ModelProfile, TalkFragmentPack
+from rapporteur_contracts import (
+    CONTRACT_VERSION,
+    ArtifactMeta,
+    ArtifactRef,
+    FragmentDraft,
+    ModelProfile,
+    PackArtifact,
+    TalkFragmentPack,
+)
 from rapporteur_contracts.entities import GenerationParams
 from rapporteur_contracts.enums import FragmentKind, InferenceEngine, TextOrigin
 from rapporteur_contracts.fragments import LinesLocator, PageLocator
+from rapporteur_pipeline.chain import put_blob
+from rapporteur_pipeline.storage import Storage
 from rapporteur_pipeline.summarize.pack import PackSource, build_pack
 
 CONFERENCE = uuid.UUID("00000000-0000-4000-8000-000000000001")
@@ -69,6 +80,22 @@ def pack() -> TalkFragmentPack:
         [PackSource(DECK, [slide_draft(n, text) for n, text in enumerate(SLIDES, 1)])],
         [PackSource(NOTES, [note_draft(1, NOTE)])],
     )
+
+
+def pack_blob(storage: Storage, value: TalkFragmentPack) -> ArtifactRef:
+    """Пакет в виде выхода этапа pack — так его получают шаги сводки (ADR-013)."""
+    meta = ArtifactMeta(
+        stage="pack",
+        stage_version="test",
+        contract_version=CONTRACT_VERSION,
+        cache_key="0" * 64,
+        input_hashes=[],
+        config_hash="0" * 64,
+        produced_at=dt.datetime(2026, 11, 5, tzinfo=dt.UTC),
+        stub=False,
+    )
+    data = PackArtifact(meta=meta, pack=value).model_dump_json().encode()
+    return put_blob(storage, data, name="pack")
 
 
 def fact(text: str, label: str, quote: str) -> dict[str, Any]:

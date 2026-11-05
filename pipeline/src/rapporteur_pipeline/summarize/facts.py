@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, NonNegativeInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from rapporteur_contracts import (
     FactsArtifact,
@@ -23,6 +23,7 @@ from rapporteur_contracts import (
 from rapporteur_contracts.claims import FactDraft
 from rapporteur_contracts.enums import FragmentKind, PackBlock
 from rapporteur_pipeline.llm.client import Message
+from rapporteur_pipeline.llm.profiles import load_profile
 from rapporteur_pipeline.llm.prompts import PROMPTS_DIR, Prompt, load_prompt
 from rapporteur_pipeline.llm.structured import ask_structured
 from rapporteur_pipeline.stage import (
@@ -31,10 +32,9 @@ from rapporteur_pipeline.stage import (
     StageError,
     make_meta,
     publish,
-    read_input,
 )
+from rapporteur_pipeline.summarize.pack import read_pack
 
-PACK_INPUT = "pack"
 STEP = "facts"
 
 _HEADINGS = {
@@ -48,7 +48,8 @@ _HEADINGS = {
 class FactsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    profile: ModelProfile
+    # Без профиля в конфигурации этапа — профиль по умолчанию из pipeline/profiles.yaml (ADR-013).
+    profile: ModelProfile = Field(default_factory=load_profile)
     # Попытки исправить невалидный ответ после первой (backlog P1-06: не больше двух).
     max_repairs: NonNegativeInt = 2
     seed: int = 1
@@ -70,9 +71,7 @@ class FactsStage:
         assert isinstance(config, FactsConfig)
         if ctx.llm is None:
             raise ValueError("этапу facts нужен клиент модели")
-        pack = TalkFragmentPack.model_validate_json(read_input(ctx, inputs, PACK_INPUT))
-        if inputs.talk_id is not None and inputs.talk_id != pack.talk_id:
-            raise ValueError("пакет фрагментов относится к другому докладу")
+        pack = read_pack(ctx, inputs)
         if not pack.fragments:
             raise StageError(FailureCode.NO_SOURCES, "В материалах доклада нет текста")
 

@@ -26,11 +26,11 @@ from rapporteur_contracts import (
 from rapporteur_contracts.claims import FactDraft
 from rapporteur_contracts.enums import ClaimStatus, ClaimType, EvidenceRejection
 from rapporteur_pipeline.stage import StageContext, make_meta, publish, read_input
+from rapporteur_pipeline.summarize.pack import read_pack
 from rapporteur_pipeline.summarize.quotes import QuoteConfig, match_quote
 
 # Имена входов этапа: артефакт шага А и пакет фрагментов доклада, который собрал воркер.
 FACTS_INPUT = "facts"
-PACK_INPUT = "pack"
 
 # Пространство имён для идентификаторов утверждений: один и тот же вход даёт те же id.
 _CLAIM_NAMESPACE = uuid.UUID("6f1b5a8e-6c2e-4f4b-9a51-3d0c4b8f2a17")
@@ -45,7 +45,7 @@ class VerifyStage:
         config = ctx.config
         assert isinstance(config, QuoteConfig)
         facts = FactsArtifact.model_validate_json(read_input(ctx, inputs, FACTS_INPUT))
-        pack = TalkFragmentPack.model_validate_json(read_input(ctx, inputs, PACK_INPUT))
+        pack = read_pack(ctx, inputs)
         if facts.talk_id != pack.talk_id:
             raise ValueError("факты и пакет фрагментов относятся к разным докладам")
 

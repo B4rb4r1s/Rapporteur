@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "stages": [
     {
       "name": "inventory",
@@ -39,12 +39,25 @@
       ]
     },
     {
+      "name": "pack",
+      "scope": "talk",
+      "resource": "cpu",
+      "needs": [
+        "slides",
+        "notes"
+      ],
+      "gates": [
+        "binding_confirmed"
+      ],
+      "uses_llm": false,
+      "output": "PackArtifact"
+    },
+    {
       "name": "facts",
       "scope": "talk",
       "resource": "gpu",
       "needs": [
-        "slides",
-        "notes"
+        "pack"
       ],
       "gates": [
         "binding_confirmed"
@@ -57,7 +70,8 @@
       "scope": "talk",
       "resource": "cpu",
       "needs": [
-        "facts"
+        "facts",
+        "pack"
       ],
       "gates": [],
       "uses_llm": false,
@@ -68,7 +82,9 @@
       "scope": "talk",
       "resource": "gpu",
       "needs": [
-        "verify"
+        "verify",
+        "facts",
+        "pack"
       ],
       "gates": [],
       "uses_llm": true,

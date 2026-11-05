@@ -31,10 +31,11 @@ from rapporteur_pipeline.storage import DirectoryStorage, sha256_hex
 from rapporteur_pipeline.summarize.quotes import QuoteConfig, match_quote, search_form
 from rapporteur_pipeline.summarize.verify import (
     FACTS_INPUT,
-    PACK_INPUT,
     VerifyStage,
     verify_facts,
 )
+
+from .fictional_talk import pack_blob
 
 TALK = uuid.UUID("00000000-0000-4000-8000-000000000010")
 DECK = uuid.UUID("00000000-0000-4000-8000-000000000100")
@@ -309,7 +310,7 @@ def test_stage_publishes_verified_claims(tmp_path: Path) -> None:
         talk_id=TALK,
         artifacts=[
             _store(storage, FACTS_INPUT, facts_stub.model_dump_json().encode()),
-            _store(storage, PACK_INPUT, PACK.model_dump_json().encode()),
+            pack_blob(storage, PACK),
         ],
         config_hash=config_hash(CONFIG),
     )

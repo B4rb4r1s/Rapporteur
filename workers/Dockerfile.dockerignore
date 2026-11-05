@@ -9,6 +9,11 @@
 !pipeline/src
 !pipeline/src/**
 !pipeline/graph.yaml
+!pipeline/profiles.yaml
+!prompts
+!prompts/**
+!templates
+!templates/**
 !workers
 !workers/pyproject.toml
 !workers/uv.lock

@@ -14,7 +14,7 @@ from rapporteur_contracts import (
     TalkFragmentPack,
 )
 from rapporteur_contracts.enums import CheckName, ClaimStatus, SummaryStatus
-from rapporteur_pipeline.chain import Ran, put_blob, run_cached
+from rapporteur_pipeline.chain import Ran, run_cached
 from rapporteur_pipeline.llm.client import ScriptedClient
 from rapporteur_pipeline.stage import FailureCode, StageError
 from rapporteur_pipeline.storage import DirectoryStorage
@@ -37,6 +37,7 @@ from .fictional_talk import (
     line,
     note_draft,
     pack,
+    pack_blob,
     slide_draft,
     summary_answer,
 )
@@ -51,14 +52,14 @@ def storage(tmp_path: Path) -> DirectoryStorage:
 
 def run_facts(storage: DirectoryStorage, *answers: str) -> tuple[Ran, ScriptedClient]:
     client = ScriptedClient(answers)
-    ref = put_blob(storage, pack().model_dump_json().encode(), name="pack")
+    ref = pack_blob(storage, pack())
     ran = run_cached(FactsStage(), storage, FactsConfig(profile=PROFILE), [ref], llm=client)
     return ran, client
 
 
 def run_summary(storage: DirectoryStorage, *answers: str) -> tuple[Summary, Ran, ScriptedClient]:
     facts, _ = run_facts(storage, facts_answer())
-    ref = put_blob(storage, pack().model_dump_json().encode(), name="pack")
+    ref = pack_blob(storage, pack())
     verify = run_cached(VerifyStage(), storage, QuoteConfig(), [facts.ref, ref])
     client = ScriptedClient(answers)
     ran = run_cached(
@@ -125,7 +126,7 @@ def test_facts_stage_is_cached(storage: DirectoryStorage) -> None:
 
 def test_empty_pack_is_a_controlled_failure(storage: DirectoryStorage) -> None:
     empty = TalkFragmentPack(conference_id=CONFERENCE, talk_id=TALK, fragments=[])
-    ref = put_blob(storage, empty.model_dump_json().encode(), name="pack")
+    ref = pack_blob(storage, empty)
 
     with pytest.raises(StageError) as error:
         run_cached(
@@ -218,6 +219,20 @@ def test_summary_stage_writes_a_ready_summary(storage: DirectoryStorage) -> None
     # Реплики слушателей и отклонённые утверждения модели не показываются.
     assert "c4 [вывод] LFU эффективнее LRU" in user and "c5" not in user
     assert ran.warnings == []
+
+
+def test_lines_without_a_full_stop_get_one(storage: DirectoryStorage) -> None:
+    """Модель иногда опускает точку; в справке такие предложения слились бы в одно."""
+    bare = [line(s["text"].rstrip("."), *s["claim_ids"]) for s in SENTENCES]
+    bare[1] = line("Автор сравнил политики «LRU» и «LFU»", "c2")
+    conclusions = [line("LFU эффективнее LRU при неравномерной нагрузке", "c4")]
+
+    summary, _, _ = run_summary(storage, summary_answer(bare, conclusions))
+
+    assert summary.status is SummaryStatus.READY
+    assert summary.sentences[0].text == SENTENCES[0]["text"]
+    assert summary.sentences[1].text == "Автор сравнил политики «LRU» и «LFU»."
+    assert summary.conclusions[0].text == "LFU эффективнее LRU при неравномерной нагрузке."
 
 
 def test_failed_checks_regenerate_the_summary(storage: DirectoryStorage) -> None:

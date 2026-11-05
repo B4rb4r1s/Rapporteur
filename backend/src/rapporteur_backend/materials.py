@@ -13,7 +13,7 @@ from rapporteur_backend import store
 from rapporteur_backend import tables as t
 from rapporteur_backend.db import LOCAL_USER_ID
 from rapporteur_backend.errors import ApiRequestError
-from rapporteur_contracts import FileBinding, SourceFile
+from rapporteur_contracts import FileBinding, SourceFile, source_file_id
 from rapporteur_contracts.artifacts import InventoryItem, TitleCandidates
 from rapporteur_contracts.enums import ApiErrorCode, FileKind, PersonRole, TalkStatus
 from rapporteur_contracts.registry import (
@@ -139,6 +139,8 @@ def add_file(
             else None,
             "warning": inspection.warning,
         },
+        # Тот же id вычисляет этап pack: фрагменты пакета ссылаются на эту запись (ADR-013).
+        entity_id=source_file_id(conference_id, item.sha256),
     )
     conn.execute(
         sa.insert(t.file_bindings).values(id=uuid4(), source_file_id=row["id"], confirmed=False)

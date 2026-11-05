@@ -6,6 +6,7 @@ import wave
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import pytest
 import yaml
@@ -14,7 +15,7 @@ from PIL import Image
 from sqlalchemy import Engine
 
 from rapporteur_backend.app import create_app
-from rapporteur_contracts import ConferenceRegistry
+from rapporteur_contracts import ConferenceRegistry, source_file_id
 from rapporteur_pipeline.storage import blob_key
 
 
@@ -84,6 +85,10 @@ def test_content_deduplicated_on_disk_and_per_conference(
     assert (tmp_path / blob_key(hashlib.sha256(data).hexdigest())).read_bytes() == data
     assert len(list((tmp_path / "blobs").glob("*/*"))) == 1
     assert not list((tmp_path / "tmp").iterdir())
+    # id файла вычисляется из конференции и SHA-256, как в этапе pack (ADR-013).
+    sha = hashlib.sha256(data).hexdigest()
+    assert original.json()["id"] == str(source_file_id(UUID(first.rsplit("/", 1)[1]), sha))
+    assert other.json()["id"] == str(source_file_id(UUID(second.rsplit("/", 1)[1]), sha))
 
 
 def test_confirm_and_reassign_materials(materials_client: TestClient) -> None:
