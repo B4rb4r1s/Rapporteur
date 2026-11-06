@@ -235,7 +235,7 @@ def plan(
                 config_hash=cfg_hash,
             )
             key = f"graph:{state.conference_id}:{spec.scope.value}:{target.id}:{mode}:" + cache_key(
-                name, handler.version, [ref.sha256 for ref in artifacts], cfg_hash
+                name, handler.version, [ref.sha256 for ref in artifacts], cfg_hash, inputs.talk_id
             )
             job = existing.get(key)
             if job is None:

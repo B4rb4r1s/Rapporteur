@@ -1,5 +1,5 @@
 // Сгенерировано из schema/all.schema.json командой make generate. Не редактировать.
-// Версия контрактов: 0.3.0
+// Версия контрактов: 0.5.0
 
 /**
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
@@ -115,14 +115,14 @@ export type StageScope = "conference" | "file" | "talk";
 export type ReportFormat = "md" | "docx" | "pdf";
 /**
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "SegmentKind".
- */
-export type SegmentKind = "talk" | "qa" | "service";
-/**
- * This interface was referenced by `RapporteurContracts`'s JSON-Schema
  * via the `definition` "SummaryStatus".
  */
 export type SummaryStatus = "ready" | "needs_attention" | "stale";
+/**
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "SegmentKind".
+ */
+export type SegmentKind = "talk" | "qa" | "service";
 
 export interface RapporteurContracts {
   [k: string]: unknown;
@@ -537,6 +537,28 @@ export interface NotesArtifact {
   source_sha256: string;
 }
 /**
+ * pack.json: пакет фрагментов одного доклада, общий вход шагов сводки (ADR-013).
+ *
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "PackArtifact".
+ */
+export interface PackArtifact {
+  meta: ArtifactMeta;
+  pack: TalkFragmentPack;
+}
+/**
+ * Все фрагменты ровно одного доклада: вход этапов сводки и единственное пространство
+ * поиска цитат. Собирает воркер; цитата из другого доклада здесь не находится.
+ *
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "TalkFragmentPack".
+ */
+export interface TalkFragmentPack {
+  conference_id: string;
+  fragments: PackedFragment[];
+  talk_id: string;
+}
+/**
  * Фрагмент в пакете доклада: метка и текст конкретной ревизии.
  *
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
@@ -629,13 +651,14 @@ export interface ReportSelection {
   talk_ids: [string, ...string[]];
 }
 /**
- * Выдача сборки справки.
+ * Выдача задачи report. input, variables и files переходят в ReportVersion (ADR-013).
  *
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
  * via the `definition` "ReportArtifact".
  */
 export interface ReportArtifact {
   files: ReportFile[];
+  input: ReportInput;
   meta: ArtifactMeta;
   report_id: string;
   variables: ReportVariables;
@@ -649,16 +672,6 @@ export interface ReportFile {
   sha256: string;
   size_bytes: number;
   storage_key: string;
-}
-/**
- * Значения, которые считает код, а не модель.
- *
- * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "ReportVariables".
- */
-export interface ReportVariables {
-  speakers_count: number;
-  talks_count: number;
 }
 /**
  * Снимок входных данных сборки. Хранится в версии справки.
@@ -706,17 +719,30 @@ export interface ReportTalk {
   title: string;
 }
 /**
+ * Значения, которые считает код, а не модель.
+ *
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "ReportVersion".
+ * via the `definition` "ReportVariables".
  */
-export interface ReportVersion {
-  created_at: string;
-  files: ReportFile[];
-  id: string;
-  input: ReportInput;
-  number: number;
-  report_id: string;
-  variables: ReportVariables;
+export interface ReportVariables {
+  speakers_count: number;
+  talks_count: number;
+}
+/**
+ * Вход задачи report (ADR-013): снимок данных конференции на момент запроса сборки,
+ * включая текущие сводки докладов, в том числе исправленные человеком.
+ *
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "ReportRequest".
+ */
+export interface ReportRequest {
+  conference: Conference;
+  people: Person[];
+  report: Report;
+  sections: Section[];
+  summaries: Summary[];
+  talks: Talk[];
+  unreviewed_confirmed: boolean;
 }
 /**
  * Секция. Дата — значение по умолчанию для её докладов.
@@ -731,6 +757,83 @@ export interface Section {
   id: string;
   order: number;
   title: string;
+}
+/**
+ * Сводка доклада: версия, утверждения, текст и результаты всех проверок.
+ *
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "Summary".
+ */
+export interface Summary {
+  checks: CheckResult[];
+  claims: Claim[];
+  conclusions: SummaryLine[];
+  created_at: string;
+  edited_by: string | null;
+  facts: FactsDraft;
+  id: string;
+  input_revision_ids: string[];
+  profile: string;
+  prompt_versions: {
+    [k: string]: string;
+  };
+  sentences: SummaryLine[];
+  status: SummaryStatus;
+  talk_id: string;
+  version: number;
+}
+/**
+ * Предложение сводки или пункт выводов со ссылками на утверждения.
+ *
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "SummaryLine".
+ */
+export interface SummaryLine {
+  /**
+   * @minItems 1
+   */
+  claim_ids: [string, ...string[]];
+  text: string;
+}
+/**
+ * Доклад реестра. Название и докладчики в справку идут отсюда, а не из ответа модели.
+ *
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "Talk".
+ */
+export interface Talk {
+  date: string | null;
+  id: string;
+  match_confidence: number | null;
+  order: number;
+  participants: TalkParticipant[];
+  section_id: string;
+  status: TalkStatus;
+  talk_type: TalkType | null;
+  title: string | null;
+  version: number;
+}
+/**
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "TalkParticipant".
+ */
+export interface TalkParticipant {
+  order: number;
+  person_id: string;
+  role: PersonRole;
+}
+/**
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "ReportVersion".
+ */
+export interface ReportVersion {
+  created_at: string;
+  files: ReportFile[];
+  id: string;
+  input: ReportInput;
+  number: number;
+  report_id: string;
+  variables: ReportVariables;
 }
 /**
  * Отрезок записи. Таймкоды абсолютные, от начала файла.
@@ -852,43 +955,6 @@ export interface StageOutput {
   warnings: string[];
 }
 /**
- * Сводка доклада: версия, утверждения, текст и результаты всех проверок.
- *
- * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "Summary".
- */
-export interface Summary {
-  checks: CheckResult[];
-  claims: Claim[];
-  conclusions: SummaryLine[];
-  created_at: string;
-  edited_by: string | null;
-  facts: FactsDraft;
-  id: string;
-  input_revision_ids: string[];
-  profile: string;
-  prompt_versions: {
-    [k: string]: string;
-  };
-  sentences: SummaryLine[];
-  status: SummaryStatus;
-  talk_id: string;
-  version: number;
-}
-/**
- * Предложение сводки или пункт выводов со ссылками на утверждения.
- *
- * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "SummaryLine".
- */
-export interface SummaryLine {
-  /**
-   * @minItems 1
-   */
-  claim_ids: [string, ...string[]];
-  text: string;
-}
-/**
  * summary.json, шаги В и Г.
  *
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
@@ -914,45 +980,6 @@ export interface SummaryDraft {
    * @minItems 1
    */
   sentences: [SummaryLine, ...SummaryLine[]];
-}
-/**
- * Доклад реестра. Название и докладчики в справку идут отсюда, а не из ответа модели.
- *
- * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "Talk".
- */
-export interface Talk {
-  date: string | null;
-  id: string;
-  match_confidence: number | null;
-  order: number;
-  participants: TalkParticipant[];
-  section_id: string;
-  status: TalkStatus;
-  talk_type: TalkType | null;
-  title: string | null;
-  version: number;
-}
-/**
- * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "TalkParticipant".
- */
-export interface TalkParticipant {
-  order: number;
-  person_id: string;
-  role: PersonRole;
-}
-/**
- * Все фрагменты ровно одного доклада: вход этапов сводки и единственное пространство
- * поиска цитат. Собирает воркер; цитата из другого доклада здесь не находится.
- *
- * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "TalkFragmentPack".
- */
-export interface TalkFragmentPack {
-  conference_id: string;
-  fragments: PackedFragment[];
-  talk_id: string;
 }
 /**
  * Сводка вместе с пакетом, по которому она собрана. Здесь проверяются правила,

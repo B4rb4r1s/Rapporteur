@@ -17,19 +17,23 @@ from rapporteur_backend.db import configured_url, make_engine
 from rapporteur_backend.migrate import migrate
 from rapporteur_backend.processing import advance_started, run_scheduler
 from rapporteur_pipeline.graph import GRAPH_FILE, GraphError, load_graph
+from rapporteur_pipeline.storage import DirectoryStorage
 from rapporteur_workers.queue import Queue
 
 
 def schedule(engine: Engine, args: argparse.Namespace) -> int:
     graph = load_graph(args.graph)
     queue = Queue(engine.url.set(drivername="postgresql").render_as_string(hide_password=False))
+    # Без тома артефактов планировщик только продвигает граф, результаты не переносит.
+    data_dir = Path(os.environ.get("RAPPORTEUR_DATA_DIR", "/data"))
+    storage = DirectoryStorage(data_dir) if data_dir.is_dir() else None
     if args.once:
         queue.check()
-        return int(advance_started(engine, queue, args.mode, graph) > 0)
+        return int(advance_started(engine, queue, args.mode, graph, storage) > 0)
     stop = Event()
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, lambda _signum, _frame: stop.set())
-    run_scheduler(engine, queue, args.mode, graph, stop)
+    run_scheduler(engine, queue, args.mode, graph, stop, storage=storage)
     return 0
 
 

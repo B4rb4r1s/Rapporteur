@@ -1,24 +1,86 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import { App } from './App';
+import { App, parseRoute, routeHash } from './App';
+
+const conference = {
+  id: 'conference', title: 'Конференция', start_date: '2026-10-20', end_date: null, place: 'г. Москва',
+};
+const progress = {
+  processing_started: false,
+  stages: {},
+  talks: [{ id: 'first', section: 'Секция', order: 1, title: 'Первый', status: 'processed', stages: {}, error_code: null, summary_number: 1, summary_status: 'ready' }],
+};
+
+beforeEach(() => {
+  window.location.hash = '';
+  document.documentElement.removeAttribute('data-theme');
+  window.localStorage.clear();
+});
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
-test('показывает название приложения', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({
-    items: [{ id: 'conference', title: 'Конференция' }], page: { total: 1 },
-  })));
+/** Ответы API по адресу; последний вызов с телом виден в mock.calls. */
+function api(routes: Record<string, () => Response>) {
+  return vi.fn(async (url: string) => {
+    const path = url.split('?')[0];
+    const handler = routes[path];
+    if (!handler) throw new Error(`нет ответа для ${url}`);
+    return handler();
+  });
+}
+
+test('адрес страницы задаёт раздел и доклад', () => {
+  expect(parseRoute('')).toEqual({ page: 'home' });
+  expect(parseRoute('#/settings')).toEqual({ page: 'settings' });
+  expect(parseRoute('#/c/abc/report')).toEqual({ page: 'conference', id: 'abc', tab: 'report' });
+  expect(parseRoute('#/c/abc')).toEqual({ page: 'conference', id: 'abc', tab: 'materials' });
+  expect(parseRoute('#/c/abc/talk/t1')).toEqual({ page: 'talk', id: 'abc', talkId: 't1' });
+  expect(routeHash({ page: 'talk', id: 'abc', talkId: 't1' })).toBe('#/c/abc/talk/t1');
+});
+
+test('главная показывает конференции и удаляет выбранную после подтверждения', async () => {
+  const fetch = api({
+    '/api/v1/conferences': () => Response.json({ items: [conference], page: { total: 1 } }),
+    '/api/v1/conferences/conference/progress': () => Response.json(progress),
+    '/api/v1/conferences/conference': () => new Response(null, { status: 204, headers: { ETag: '"3"' } }),
+  });
+  fetch.mockImplementationOnce(async () => Response.json({ items: [conference], page: { total: 1 } }));
+  vi.stubGlobal('fetch', fetch);
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
   render(<App />);
 
   expect(screen.getByRole('heading', { level: 1, name: 'Репортёр' })).toBeDefined();
-  await screen.findByRole('option', { name: 'Конференция' });
+  const card = await screen.findByRole('article', { name: 'Конференция' });
+  await within(card).findByText('Проверено');
+  fireEvent.click(within(card).getByRole('button', { name: 'Удалить' }));
+
+  await screen.findByText('Конференция «Конференция» удалена.');
+  expect(screen.queryByRole('article', { name: 'Конференция' })).toBeNull();
+  expect(fetch).toHaveBeenLastCalledWith('/api/v1/conferences/conference', {
+    method: 'DELETE', headers: { 'If-Match': '"3"' },
+  });
 });
 
-test('сохраняет ручную привязку с версией последнего просмотра', async () => {
+test('переключатель темы меняет тему и запоминает выбор', async () => {
+  vi.stubGlobal('fetch', api({
+    '/api/v1/conferences': () => Response.json({ items: [], page: { total: 0 } }),
+  }));
+  render(<App />);
+  await screen.findByText('Конференций пока нет.');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Включить тёмную тему' }));
+  expect(document.documentElement.dataset.theme).toBe('dark');
+  expect(window.localStorage.getItem('rapporteur.theme')).toBe('dark');
+  fireEvent.click(screen.getByRole('button', { name: 'Включить светлую тему' }));
+  expect(document.documentElement.dataset.theme).toBe('light');
+});
+
+test('сохраняет привязку с версией и после запуска переходит к ходу обработки', async () => {
   const review = {
     processing_started: false,
     sections: [{ id: 'section', title: 'Секция' }],
@@ -37,38 +99,37 @@ test('сохраняет ручную привязку с версией пос�
       { id: 'second', title: 'Второй', section: 'Секция', order: 2, status: 'draft' },
     ],
   };
-  const api = vi.fn()
-    .mockResolvedValueOnce(Response.json({
-      items: [{ id: 'conference', title: 'Конференция' }], page: { total: 1 },
-    }))
-    .mockResolvedValueOnce(Response.json(review, { headers: { ETag: '"4"' } }))
-    .mockResolvedValueOnce(Response.json({
-      ...review,
-      files: [{ ...review.files[0], binding: { confirmed: true, talk_id: 'second' } }],
-    }, { headers: { ETag: '"5"' } }))
-    .mockResolvedValueOnce(Response.json({
-      status_url: '/api/v1/jobs?conference_id=conference',
-    }, { status: 202 }));
-  vi.stubGlobal('fetch', api);
+  const saved = { ...review, files: [{ ...review.files[0], binding: { confirmed: true, talk_id: 'second' } }] };
+  let materials = 0;
+  const fetch = api({
+    '/api/v1/conferences/conference': () => Response.json(conference, { headers: { ETag: '"1"' } }),
+    '/api/v1/conferences/conference/materials': () => Response.json(materials++ ? saved : review, {
+      headers: { ETag: '"4"' },
+    }),
+    '/api/v1/conferences/conference/materials/bindings': () => Response.json(saved, { headers: { ETag: '"5"' } }),
+    '/api/v1/conferences/conference/processing': () => Response.json(
+      { status_url: '/api/v1/jobs?conference_id=conference' }, { status: 202 },
+    ),
+    '/api/v1/conferences/conference/progress': () => Response.json({ ...progress, processing_started: true }),
+  });
+  vi.stubGlobal('fetch', fetch);
+  window.location.hash = '#/c/conference/materials';
   render(<App />);
 
-  await screen.findByRole('option', { name: 'Конференция' });
-  fireEvent.change(screen.getByLabelText('Конференция'), { target: { value: 'conference' } });
   const select = await screen.findByRole<HTMLSelectElement>('combobox', { name: 'Доклад для Доклад.pdf' });
   expect(select.value).toBe('first');
+  expect(screen.getByText('Проверьте и подтвердите привязки: пока они не подтверждены, шаги сводки ждут.')).toBeDefined();
   fireEvent.change(select, { target: { value: 'second' } });
   fireEvent.click(screen.getByRole('button', { name: 'Подтвердить привязки' }));
   await screen.findByText('Привязки сохранены.');
-
-  expect(api).toHaveBeenLastCalledWith('/api/v1/conferences/conference/materials/bindings', {
+  expect(fetch).toHaveBeenCalledWith('/api/v1/conferences/conference/materials/bindings', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'If-Match': '"4"' },
     body: JSON.stringify({ bindings: [{ source_file_id: 'file', talk_id: 'second' }] }),
   });
-  expect(select.value).toBe('second');
+
   fireEvent.click(screen.getByRole('button', { name: 'Запустить обработку' }));
-  await screen.findByText('Обработка запрошена.');
-  expect(api).toHaveBeenLastCalledWith('/api/v1/conferences/conference/processing', { method: 'POST' });
-  expect(screen.getByRole('link', { name: 'Задачи обработки (JSON)' }).getAttribute('href'))
-    .toBe('/api/v1/jobs?conference_id=conference');
+  await waitFor(() => expect(window.location.hash).toBe('#/c/conference/processing'));
+  await screen.findByRole('heading', { name: 'Обработка' });
+  expect(fetch).toHaveBeenCalledWith('/api/v1/conferences/conference/processing', { method: 'POST' });
 });

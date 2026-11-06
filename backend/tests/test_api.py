@@ -9,7 +9,7 @@ from sqlalchemy import Engine
 
 from rapporteur_backend import tables as t
 from rapporteur_backend.db import LOCAL_USER_ID
-from rapporteur_backend.migrate import migrate
+from rapporteur_backend.migrate import MIGRATION_HEAD, migrate
 from rapporteur_contracts import ApiError, Conference, Person, Report, Section, Talk
 
 
@@ -51,7 +51,7 @@ def test_migration_is_idempotent_and_seeds_local(database: Engine) -> None:
         assert [tuple(row) for row in conn.execute(sa.select(t.users))] == [
             (LOCAL_USER_ID, "local")
         ]
-        assert conn.scalar(sa.text("SELECT version_num FROM alembic_version")) == "0003_processing"
+        assert conn.scalar(sa.text("SELECT version_num FROM alembic_version")) == MIGRATION_HEAD
 
 
 def test_conference_crud_and_etag(client: TestClient, database: Engine) -> None:

@@ -2928,6 +2928,609 @@
         }
       }
     },
+    "/api/v1/conferences/{conference_id}/progress": {
+      "get": {
+        "summary": "Conference Progress",
+        "operationId": "conference_progress_api_v1_conferences__conference_id__progress_get",
+        "parameters": [
+          {
+            "name": "conference_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conference Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Progress"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/talks/{talk_id}/summary": {
+      "get": {
+        "summary": "Get Summary",
+        "operationId": "get_summary_api_v1_talks__talk_id__summary_get",
+        "parameters": [
+          {
+            "name": "talk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Talk Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TalkSummaryView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "summary": "Edit Summary",
+        "operationId": "edit_summary_api_v1_talks__talk_id__summary_put",
+        "parameters": [
+          {
+            "name": "talk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Talk Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32,
+              "description": "Сильный ETag последнего чтения, например \"1\"",
+              "title": "If-Match"
+            },
+            "description": "Сильный ETag последнего чтения, например \"1\""
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TalkSummaryView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/talks/{talk_id}/summary/review": {
+      "post": {
+        "summary": "Review Summary",
+        "description": "Человек проверил сводку: утверждения из её текста подтверждены, доклад проверен.",
+        "operationId": "review_summary_api_v1_talks__talk_id__summary_review_post",
+        "parameters": [
+          {
+            "name": "talk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Talk Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 32,
+              "description": "Сильный ETag последнего чтения, например \"1\"",
+              "title": "If-Match"
+            },
+            "description": "Сильный ETag последнего чтения, например \"1\""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TalkSummaryView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/source-files/{file_id}/slides/{slide_no}": {
+      "get": {
+        "summary": "Slide Image",
+        "description": "Картинка слайда из результата разбора презентации: к ней ведут ссылки сводки.",
+        "operationId": "slide_image_api_v1_source_files__file_id__slides__slide_no__get",
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "File Id"
+            }
+          },
+          {
+            "name": "slide_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Slide No"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/png": {}
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/reports/{report_id}/build": {
+      "post": {
+        "summary": "Build Report",
+        "operationId": "build_report_api_v1_reports__report_id__build_post",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportBuild"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/report-versions/{version_id}/files/{report_format}": {
+      "get": {
+        "summary": "Report File",
+        "operationId": "report_file_api_v1_report_versions__version_id__files__report_format__get",
+        "parameters": [
+          {
+            "name": "version_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Version Id"
+            }
+          },
+          {
+            "name": "report_format",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {},
+              "text/markdown; charset=utf-8": {},
+              "application/pdf": {}
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/system": {
+      "get": {
+        "summary": "System",
+        "operationId": "system_api_v1_system_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -3065,6 +3668,150 @@
           "bindings"
         ],
         "title": "BindingReview"
+      },
+      "CheckName": {
+        "type": "string",
+        "enum": [
+          "claim_links",
+          "sentence_count",
+          "numbers_in_sources",
+          "forbidden_phrases",
+          "critic"
+        ],
+        "title": "CheckName"
+      },
+      "CheckResult": {
+        "properties": {
+          "check": {
+            "$ref": "#/components/schemas/CheckName"
+          },
+          "passed": {
+            "type": "boolean",
+            "title": "Passed"
+          },
+          "attempt": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Attempt"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "check",
+          "passed",
+          "attempt",
+          "details"
+        ],
+        "title": "CheckResult"
+      },
+      "Claim": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "key": {
+            "type": "string",
+            "pattern": "^c[1-9][0-9]*$",
+            "title": "Key"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ClaimType"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ClaimStatus"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "rejected_evidence": {
+            "items": {
+              "$ref": "#/components/schemas/RejectedEvidence"
+            },
+            "type": "array",
+            "title": "Rejected Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "key",
+          "type",
+          "text",
+          "status",
+          "evidence",
+          "rejected_evidence"
+        ],
+        "title": "Claim",
+        "description": "Утверждение. key адресует его внутри сводки, id — в БД и API."
+      },
+      "ClaimEdit": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^c[1-9][0-9]*$",
+            "title": "Key"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "text"
+        ],
+        "title": "ClaimEdit",
+        "description": "Новый текст утверждения: правка снимает с него подтверждение (spec §6.8)."
+      },
+      "ClaimStatus": {
+        "type": "string",
+        "enum": [
+          "rejected",
+          "verified",
+          "needs_human",
+          "confirmed"
+        ],
+        "title": "ClaimStatus",
+        "description": "rejected — цитата не прошла сверку кодом; verified — прошла, человек ещё не смотрел;\nneeds_human — нужна проверка человеком: текст правили или опора только на текст VLM;\nconfirmed — подтверждено человеком."
+      },
+      "ClaimType": {
+        "type": "string",
+        "enum": [
+          "problem",
+          "method",
+          "result",
+          "conclusion",
+          "listener_remark"
+        ],
+        "title": "ClaimType"
       },
       "Conference": {
         "properties": {
@@ -3226,6 +3973,225 @@
         "type": "object",
         "title": "ConferenceWrite"
       },
+      "Evidence": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "pattern": "^(?:[SV](?:[1-9][0-9]*\\.)?[1-9][0-9]*|T(?:[1-9][0-9]*\\.)?[0-9]{2}:[0-9]{2}:[0-9]{2}|N[1-9][0-9]*)$",
+            "title": "Label"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Quote"
+          },
+          "fragment_revision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Fragment Revision Id"
+          },
+          "span": {
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "integer",
+                "minimum": 0.0
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Span"
+          },
+          "match_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Match Score"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "quote",
+          "fragment_revision_id",
+          "span",
+          "match_score"
+        ],
+        "title": "Evidence",
+        "description": "Подтверждённая ссылка. label и quote даёт модель, остальное вычисляет код (ADR-003)."
+      },
+      "EvidenceDraft": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "pattern": "^(?:[SV](?:[1-9][0-9]*\\.)?[1-9][0-9]*|T(?:[1-9][0-9]*\\.)?[0-9]{2}:[0-9]{2}:[0-9]{2}|N[1-9][0-9]*)$",
+            "title": "Label"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Quote"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "quote"
+        ],
+        "title": "EvidenceDraft",
+        "description": "Ссылка от модели: метка и дословная цитата."
+      },
+      "EvidenceRejection": {
+        "type": "string",
+        "enum": [
+          "label_not_found",
+          "quote_not_found",
+          "below_threshold",
+          "number_mismatch",
+          "negation_mismatch",
+          "too_short"
+        ],
+        "title": "EvidenceRejection"
+      },
+      "FactDraft": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceDraft"
+            },
+            "type": "array",
+            "title": "Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text",
+          "evidence"
+        ],
+        "title": "FactDraft"
+      },
+      "FactsDraft": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "speakers": {
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Speakers"
+          },
+          "affiliations": {
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Affiliations"
+          },
+          "talk_type": {
+            "$ref": "#/components/schemas/TalkType"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FactDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/FactDraft"
+            },
+            "type": "array",
+            "title": "Methods"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/FactDraft"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "conclusions": {
+            "items": {
+              "$ref": "#/components/schemas/FactDraft"
+            },
+            "type": "array",
+            "title": "Conclusions"
+          },
+          "conclusions_absent_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conclusions Absent Reason"
+          },
+          "listener_remarks": {
+            "items": {
+              "$ref": "#/components/schemas/FactDraft"
+            },
+            "type": "array",
+            "title": "Listener Remarks"
+          },
+          "uncertain": {
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "title": "Uncertain"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "speakers",
+          "affiliations",
+          "talk_type",
+          "problem",
+          "methods",
+          "results",
+          "conclusions",
+          "conclusions_absent_reason",
+          "listener_remarks",
+          "uncertain"
+        ],
+        "title": "FactsDraft",
+        "description": "Ответ шага А. title, speakers и affiliations — подсказка для сверки с реестром."
+      },
       "FileBinding": {
         "properties": {
           "id": {
@@ -3290,6 +4256,17 @@
           "program"
         ],
         "title": "FileKind"
+      },
+      "FragmentKind": {
+        "type": "string",
+        "enum": [
+          "slide",
+          "transcript",
+          "note",
+          "program",
+          "slide_description"
+        ],
+        "title": "FragmentKind"
       },
       "Health": {
         "properties": {
@@ -3497,6 +4474,34 @@
         ],
         "title": "JobStatus"
       },
+      "LinesLocator": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "lines",
+            "title": "Kind"
+          },
+          "line_start": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Line Start"
+          },
+          "line_end": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Line End"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "line_start",
+          "line_end"
+        ],
+        "title": "LinesLocator",
+        "description": "Строки текстового файла, нумерация с единицы, конец включён."
+      },
       "Material": {
         "properties": {
           "source": {
@@ -3612,6 +4617,115 @@
           "talks"
         ],
         "title": "Materials"
+      },
+      "PackBlock": {
+        "type": "string",
+        "enum": [
+          "main",
+          "qa"
+        ],
+        "title": "PackBlock"
+      },
+      "PackedFragment": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "pattern": "^(?:[SV](?:[1-9][0-9]*\\.)?[1-9][0-9]*|T(?:[1-9][0-9]*\\.)?[0-9]{2}:[0-9]{2}:[0-9]{2}|N[1-9][0-9]*)$",
+            "title": "Label"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FragmentKind"
+          },
+          "fragment_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Fragment Id"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Revision Id"
+          },
+          "source_file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source File Id"
+          },
+          "locator": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PageLocator"
+              },
+              {
+                "$ref": "#/components/schemas/TimeLocator"
+              },
+              {
+                "$ref": "#/components/schemas/LinesLocator"
+              }
+            ],
+            "title": "Locator",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "lines": "#/components/schemas/LinesLocator",
+                "page": "#/components/schemas/PageLocator",
+                "time": "#/components/schemas/TimeLocator"
+              }
+            }
+          },
+          "origin": {
+            "$ref": "#/components/schemas/TextOrigin"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "block": {
+            "$ref": "#/components/schemas/PackBlock"
+          },
+          "low_quality": {
+            "type": "boolean",
+            "title": "Low Quality"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "kind",
+          "fragment_id",
+          "revision_id",
+          "source_file_id",
+          "locator",
+          "origin",
+          "text",
+          "block",
+          "low_quality"
+        ],
+        "title": "PackedFragment",
+        "description": "Фрагмент в пакете доклада: метка и текст конкретной ревизии."
+      },
+      "PageLocator": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "page",
+            "title": "Kind"
+          },
+          "page_no": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Page No"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "page_no"
+        ],
+        "title": "PageLocator",
+        "description": "Слайд презентации или страница документа."
       },
       "PageMeta": {
         "properties": {
@@ -3877,6 +4991,114 @@
         ],
         "title": "ProcessingAccepted"
       },
+      "ProfileInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "reasoning": {
+            "type": "boolean",
+            "title": "Reasoning"
+          },
+          "prompt_version": {
+            "type": "string",
+            "title": "Prompt Version"
+          },
+          "default": {
+            "type": "boolean",
+            "title": "Default"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "model",
+          "reasoning",
+          "prompt_version",
+          "default"
+        ],
+        "title": "ProfileInfo"
+      },
+      "Progress": {
+        "properties": {
+          "processing_started": {
+            "type": "boolean",
+            "title": "Processing Started"
+          },
+          "stages": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "propertyNames": {
+                "$ref": "#/components/schemas/JobStatus"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Stages"
+          },
+          "talks": {
+            "items": {
+              "$ref": "#/components/schemas/TalkProgress"
+            },
+            "type": "array",
+            "title": "Talks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "processing_started",
+          "stages",
+          "talks"
+        ],
+        "title": "Progress"
+      },
+      "RejectedEvidence": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "pattern": "^(?:[SV](?:[1-9][0-9]*\\.)?[1-9][0-9]*|T(?:[1-9][0-9]*\\.)?[0-9]{2}:[0-9]{2}:[0-9]{2}|N[1-9][0-9]*)$",
+            "title": "Label"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Quote"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/EvidenceRejection"
+          },
+          "best_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Score"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "quote",
+          "reason",
+          "best_score"
+        ],
+        "title": "RejectedEvidence",
+        "description": "Цитата, не прошедшая сверку, с причиной отказа."
+      },
       "Report": {
         "properties": {
           "id": {
@@ -3919,6 +5141,19 @@
           "version"
         ],
         "title": "Report"
+      },
+      "ReportBuild": {
+        "properties": {
+          "unreviewed_confirmed": {
+            "type": "boolean",
+            "title": "Unreviewed Confirmed",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReportBuild",
+        "description": "Запрос сборки. Непроверенные доклады входят только с явным подтверждением (ADR-006)."
       },
       "ReportFile": {
         "properties": {
@@ -4546,6 +5781,240 @@
         "title": "SourceFile",
         "description": "Файл конференции. Оригинал на томе общий по SHA-256, эта запись — у каждой своя."
       },
+      "Summary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "talk_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Talk Id"
+          },
+          "version": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Version"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SummaryStatus"
+          },
+          "profile": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Profile"
+          },
+          "prompt_versions": {
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            },
+            "propertyNames": {
+              "minLength": 1
+            },
+            "type": "object",
+            "title": "Prompt Versions"
+          },
+          "input_revision_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Input Revision Ids"
+          },
+          "facts": {
+            "$ref": "#/components/schemas/FactsDraft"
+          },
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "type": "array",
+            "title": "Claims"
+          },
+          "sentences": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryLine"
+            },
+            "type": "array",
+            "title": "Sentences"
+          },
+          "conclusions": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryLine"
+            },
+            "type": "array",
+            "title": "Conclusions"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/CheckResult"
+            },
+            "type": "array",
+            "title": "Checks"
+          },
+          "edited_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edited By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "talk_id",
+          "version",
+          "status",
+          "profile",
+          "prompt_versions",
+          "input_revision_ids",
+          "facts",
+          "claims",
+          "sentences",
+          "conclusions",
+          "checks",
+          "edited_by",
+          "created_at"
+        ],
+        "title": "Summary",
+        "description": "Сводка доклада: версия, утверждения, текст и результаты всех проверок."
+      },
+      "SummaryEdit": {
+        "properties": {
+          "sentences": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryLine"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Sentences"
+          },
+          "conclusions": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryLine"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Conclusions"
+          },
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimEdit"
+            },
+            "type": "array",
+            "title": "Claims"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sentences",
+          "conclusions"
+        ],
+        "title": "SummaryEdit",
+        "description": "Текст сводки после правки человеком: предложения и выводы со ссылками на утверждения."
+      },
+      "SummaryLine": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "claim_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^c[1-9][0-9]*$"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Claim Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text",
+          "claim_ids"
+        ],
+        "title": "SummaryLine",
+        "description": "Предложение сводки или пункт выводов со ссылками на утверждения."
+      },
+      "SummaryStatus": {
+        "type": "string",
+        "enum": [
+          "ready",
+          "needs_attention",
+          "stale"
+        ],
+        "title": "SummaryStatus"
+      },
+      "SystemInfo": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "migration": {
+            "type": "string",
+            "title": "Migration"
+          },
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileInfo"
+            },
+            "type": "array",
+            "title": "Profiles"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateInfo"
+            },
+            "type": "array",
+            "title": "Templates"
+          },
+          "queue": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Queue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "mode",
+          "migration",
+          "profiles",
+          "templates",
+          "queue"
+        ],
+        "title": "SystemInfo"
+      },
       "Talk": {
         "properties": {
           "id": {
@@ -4643,6 +6112,36 @@
         "title": "Talk",
         "description": "Доклад реестра. Название и докладчики в справку идут отсюда, а не из ответа модели."
       },
+      "TalkFragmentPack": {
+        "properties": {
+          "conference_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conference Id"
+          },
+          "talk_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Talk Id"
+          },
+          "fragments": {
+            "items": {
+              "$ref": "#/components/schemas/PackedFragment"
+            },
+            "type": "array",
+            "title": "Fragments"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "conference_id",
+          "talk_id",
+          "fragments"
+        ],
+        "title": "TalkFragmentPack",
+        "description": "Все фрагменты ровно одного доклада: вход этапов сводки и единственное пространство\nпоиска цитат. Собирает воркер; цитата из другого доклада здесь не находится."
+      },
       "TalkParticipant": {
         "properties": {
           "person_id": {
@@ -4668,6 +6167,95 @@
         ],
         "title": "TalkParticipant"
       },
+      "TalkProgress": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "section_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Section Id"
+          },
+          "section": {
+            "type": "string",
+            "title": "Section"
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TalkStatus"
+          },
+          "stages": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JobStatus"
+            },
+            "type": "object",
+            "title": "Stages"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "summary_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Number"
+          },
+          "summary_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummaryStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "section_id",
+          "section",
+          "order",
+          "title",
+          "status",
+          "stages",
+          "error_code",
+          "summary_number",
+          "summary_status"
+        ],
+        "title": "TalkProgress"
+      },
       "TalkStatus": {
         "type": "string",
         "enum": [
@@ -4680,6 +6268,38 @@
           "insufficient_data"
         ],
         "title": "TalkStatus"
+      },
+      "TalkSummaryView": {
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/Summary"
+          },
+          "pack": {
+            "$ref": "#/components/schemas/TalkFragmentPack"
+          },
+          "talk_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talk Title"
+          },
+          "talk_status": {
+            "$ref": "#/components/schemas/TalkStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "pack",
+          "talk_title",
+          "talk_status"
+        ],
+        "title": "TalkSummaryView"
       },
       "TalkType": {
         "type": "string",
@@ -4761,6 +6381,63 @@
         "additionalProperties": false,
         "type": "object",
         "title": "TalkWrite"
+      },
+      "TemplateInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "version"
+        ],
+        "title": "TemplateInfo"
+      },
+      "TextOrigin": {
+        "type": "string",
+        "enum": [
+          "extracted",
+          "asr",
+          "vlm",
+          "term_fix",
+          "human"
+        ],
+        "title": "TextOrigin"
+      },
+      "TimeLocator": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "time",
+            "title": "Kind"
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start Ms"
+          },
+          "end_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "End Ms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "start_ms",
+          "end_ms"
+        ],
+        "title": "TimeLocator",
+        "description": "Отрезок записи, таймкоды от начала файла."
       },
       "TitleCandidates": {
         "properties": {

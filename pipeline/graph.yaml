@@ -9,7 +9,7 @@
 #   только если такие файлы есть.
 # - Этапы Ф2–Ф3 (asr, segment) пока без реализации: в профиле dev работают заглушки,
 #   в профиле gpu они не запускаются на настоящих данных.
-version: 1
+version: 2
 stages:
   # 6.1. Хэши, типы по содержимому, длительность, кодировка.
   - name: inventory
@@ -61,11 +61,20 @@ stages:
     uses_llm: true
     output: SegmentsArtifact
 
+  # Пакет фрагментов доклада — общий вход шагов сводки (ADR-013).
+  - name: pack
+    scope: talk
+    resource: cpu
+    needs: [slides, notes, asr, segment]
+    gates: [binding_confirmed, boundaries_confirmed]
+    uses_llm: false
+    output: PackArtifact
+
   # 6.7, шаг А. Факты и цитаты из пакета фрагментов одного доклада.
   - name: facts
     scope: talk
     resource: gpu
-    needs: [slides, notes, asr, segment]
+    needs: [pack]
     gates: [binding_confirmed, boundaries_confirmed]
     uses_llm: true
     output: FactsArtifact
@@ -74,7 +83,7 @@ stages:
   - name: verify
     scope: talk
     resource: cpu
-    needs: [facts]
+    needs: [facts, pack]
     gates: []
     uses_llm: false
     output: VerifiedClaimsArtifact
@@ -83,7 +92,7 @@ stages:
   - name: summary
     scope: talk
     resource: gpu
-    needs: [verify]
+    needs: [verify, facts, pack]
     gates: []
     uses_llm: true
     output: SummaryArtifact

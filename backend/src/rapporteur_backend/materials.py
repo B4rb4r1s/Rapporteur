@@ -13,7 +13,7 @@ from rapporteur_backend import store
 from rapporteur_backend import tables as t
 from rapporteur_backend.db import LOCAL_USER_ID
 from rapporteur_backend.errors import ApiRequestError
-from rapporteur_contracts import FileBinding, SourceFile
+from rapporteur_contracts import FileBinding, SourceFile, source_file_id
 from rapporteur_contracts.artifacts import InventoryItem, TitleCandidates
 from rapporteur_contracts.enums import ApiErrorCode, FileKind, PersonRole, TalkStatus
 from rapporteur_contracts.registry import (
@@ -88,18 +88,18 @@ def safe_path(value: str) -> str:
     return value
 
 
-def folder(path: str) -> tuple[str, str, int, str] | None:
+def folder(path: str) -> tuple[str, str, int | None, str] | None:
+    """Папка доклада: «Секция/01_Иванов/» или «Иванов/». Без номера доклад получает
+    следующий порядковый номер в секции, то есть по порядку загрузки папок."""
     parts = path.split("/")[:-1]
     if not parts or any(part.casefold() == "_общее" for part in parts):
         return None
     match = _TALK_FOLDER.fullmatch(parts[-1])
-    if match is None:
-        return None
     return (
         parts[-2].strip() if len(parts) > 1 else "Основная секция",
         "/".join(parts),
-        max(1, int(match[1])),
-        match[2].strip(),
+        max(1, int(match[1])) if match else None,
+        (match[2] if match else parts[-1]).strip(),
     )
 
 
@@ -139,6 +139,8 @@ def add_file(
             else None,
             "warning": inspection.warning,
         },
+        # Тот же id вычисляет этап pack: фрагменты пакета ссылаются на эту запись (ADR-013).
+        entity_id=source_file_id(conference_id, item.sha256),
     )
     conn.execute(
         sa.insert(t.file_bindings).values(id=uuid4(), source_file_id=row["id"], confirmed=False)
@@ -156,7 +158,7 @@ def _source(row: RowMapping) -> SourceFile:
 def _register_folder(
     conn: Connection,
     conference_id: UUID,
-    location: tuple[str, str, int, str],
+    location: tuple[str, str, int | None, str],
     title: TitleCandidates | None,
 ) -> None:
     section_name, import_folder, order, fallback = location
@@ -180,7 +182,9 @@ def _register_folder(
     )
     if any(row["import_folder"] == import_folder for row in rows):
         return
-    if any(row["order"] == order for row in rows):
+    if order is None:
+        order = max((row["order"] for row in rows), default=0) + 1
+    elif any(row["order"] == order for row in rows):
         return
     store.create(
         conn,

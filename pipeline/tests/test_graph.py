@@ -34,6 +34,7 @@ def test_phase1_stages_and_phase2_3_placeholders(graph: PipelineGraph) -> None:
         "notes",
         "asr",
         "segment",
+        "pack",
         "facts",
         "verify",
         "summary",
@@ -43,7 +44,7 @@ def test_phase1_stages_and_phase2_3_placeholders(graph: PipelineGraph) -> None:
 def test_summary_step_is_isolated_per_talk(graph: PipelineGraph) -> None:
     summary_step = [stage for stage in graph.stages if stage.output in SUMMARY_OUTPUTS]
 
-    assert [stage.name for stage in summary_step] == ["facts", "verify", "summary"]
+    assert [stage.name for stage in summary_step] == ["pack", "facts", "verify", "summary"]
     assert all(stage.scope is StageScope.TALK for stage in summary_step)
 
 
@@ -65,11 +66,21 @@ def test_file_stages_know_their_inputs(graph: PipelineGraph) -> None:
     assert stages["segment"].file_kinds == [FileKind.AUDIO, FileKind.VIDEO]
 
 
-def test_facts_wait_for_both_human_checks(graph: PipelineGraph) -> None:
-    facts = _stages(graph)["facts"]
+def test_pack_and_facts_wait_for_both_human_checks(graph: PipelineGraph) -> None:
+    stages = _stages(graph)
 
-    assert facts.gates == [HumanGate.BINDING_CONFIRMED, HumanGate.BOUNDARIES_CONFIRMED]
-    assert set(facts.needs) == {"slides", "notes", "asr", "segment"}
+    for name in ("pack", "facts"):
+        assert stages[name].gates == [HumanGate.BINDING_CONFIRMED, HumanGate.BOUNDARIES_CONFIRMED]
+    assert set(stages["pack"].needs) == {"slides", "notes", "asr", "segment"}
+
+
+def test_summary_steps_read_the_talk_pack(graph: PipelineGraph) -> None:
+    """Пакет — общий вход шагов сводки: каждый шаг получает его отдельным входом (ADR-013)."""
+    stages = _stages(graph)
+
+    assert stages["facts"].needs == ["pack"]
+    assert set(stages["verify"].needs) == {"facts", "pack"}
+    assert set(stages["summary"].needs) == {"verify", "facts", "pack"}
 
 
 def test_execution_order_respects_needs(graph: PipelineGraph) -> None:
@@ -101,7 +112,7 @@ def _broken_graph(tmp_path: Path, change: dict[str, Any]) -> Path:
         ({"summary": {"output": "SummaryDraft"}}, "не артефакт"),
         ({"summary": {"output": "Отчёт"}}, "не артефакт"),
         ({"facts": {"resource": "cpu"}}, "ресурс должен быть gpu"),
-        ({"facts": {"scope": "conference"}}, "должен иметь область talk"),
+        ({"pack": {"scope": "conference"}}, "должен иметь область talk"),
     ],
     ids=[
         "conference-waits-for-talk",

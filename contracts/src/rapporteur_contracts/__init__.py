@@ -9,6 +9,7 @@ from rapporteur_contracts.artifacts import (
     FactsArtifact,
     InventoryArtifact,
     NotesArtifact,
+    PackArtifact,
     ReportArtifact,
     SegmentsArtifact,
     SlidesArtifact,
@@ -56,8 +57,9 @@ from rapporteur_contracts.fragments import (
     TalkFragmentPack,
 )
 from rapporteur_contracts.graph import PipelineGraph, StageSpec
+from rapporteur_contracts.ids import source_file_id
 from rapporteur_contracts.registry import ConferenceRegistry
-from rapporteur_contracts.reports import Report, ReportInput, ReportVersion
+from rapporteur_contracts.reports import Report, ReportInput, ReportRequest, ReportVersion
 
 CONTRACT_VERSION = version("rapporteur-contracts")
 
@@ -78,12 +80,14 @@ PUBLIC_MODELS: dict[str, type[ContractModel]] = {
         JobAccepted,
         ModelProfile,
         NotesArtifact,
+        PackArtifact,
         PageMeta,
         Person,
         PipelineGraph,
         Report,
         ReportArtifact,
         ReportInput,
+        ReportRequest,
         ReportVersion,
         Section,
         Segment,
@@ -130,6 +134,7 @@ __all__ = [
     "JobAccepted",
     "ModelProfile",
     "NotesArtifact",
+    "PackArtifact",
     "PackedFragment",
     "PageMeta",
     "Person",
@@ -138,6 +143,7 @@ __all__ = [
     "Report",
     "ReportArtifact",
     "ReportInput",
+    "ReportRequest",
     "ReportVersion",
     "Section",
     "Segment",
@@ -158,4 +164,5 @@ __all__ = [
     "TranscriptArtifact",
     "VerifiedClaimsArtifact",
     "can_transition",
+    "source_file_id",
 ]

@@ -10,12 +10,13 @@ from sqlalchemy import Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from rapporteur_backend import tables as t
+from rapporteur_backend.results import sync_results
 from rapporteur_contracts import ArtifactRef, PipelineGraph
 from rapporteur_contracts.artifacts import InventoryItem
 from rapporteur_contracts.enums import FileKind, HumanGate, TalkStatus
 from rapporteur_pipeline.ingest.inventory_stage import InventoryConfig, InventoryStage
 from rapporteur_pipeline.stage import SOURCE_INPUT
-from rapporteur_pipeline.storage import blob_key
+from rapporteur_pipeline.storage import Storage, blob_key
 from rapporteur_workers.queue import Mode, Queue
 from rapporteur_workers.runtime import log
 from rapporteur_workers.scheduler import ConferenceState, FileState, Scheduler, TalkState
@@ -72,7 +73,14 @@ def load_state(conn: Connection, conference_id: UUID) -> ConferenceState:
     )
 
 
-def advance_started(database: Engine, queue: Queue, mode: Mode, graph: PipelineGraph) -> int:
+def advance_started(
+    database: Engine,
+    queue: Queue,
+    mode: Mode,
+    graph: PipelineGraph,
+    storage: Storage | None = None,
+) -> int:
+    """Проход планировщика. С хранилищем сначала переносит готовые сводки и справки в БД."""
     conferences = t.conferences
     with database.connect() as conn:
         started = list(
@@ -96,6 +104,8 @@ def advance_started(database: Engine, queue: Queue, mode: Mode, graph: PipelineG
                     .with_for_update(skip_locked=True)
                 )
                 if active is not None:
+                    if storage is not None:
+                        sync_results(conn, queue, storage, conference_id, mode)
                     Scheduler(
                         queue, lambda target: load_state(conn, target), mode, graph=graph
                     ).advance(conference_id)
@@ -113,11 +123,12 @@ def run_scheduler(
     graph: PipelineGraph,
     stop: Event,
     poll_seconds: float = 2,
+    storage: Storage | None = None,
 ) -> None:
     queue.check()
     while not stop.is_set():
         try:
-            advance_started(database, queue, mode, graph)
+            advance_started(database, queue, mode, graph, storage)
         except SQLAlchemyError:
             log("scheduler_poll_failed")
         stop.wait(poll_seconds)

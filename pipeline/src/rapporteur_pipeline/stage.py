@@ -8,6 +8,7 @@ from enum import StrEnum
 from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Protocol
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -39,6 +40,8 @@ class FailureCode(StrEnum):
     LLM_UNAVAILABLE = "llm_unavailable"
     LLM_TRUNCATED = "llm_truncated"
     LLM_INVALID_OUTPUT = "llm_invalid_output"
+    # Сборка справки: выборка, бланк или подтверждение не позволяют собрать справку.
+    REPORT_INVALID = "report_invalid"
 
 
 class StageError(Exception):
@@ -72,7 +75,16 @@ def config_hash(config: BaseModel) -> str:
     return sha256_hex(config.model_dump_json().encode())
 
 
-def cache_key(stage: str, stage_version: str, input_hashes: list[str], cfg_hash: str) -> str:
+def cache_key(
+    stage: str,
+    stage_version: str,
+    input_hashes: list[str],
+    cfg_hash: str,
+    talk_id: UUID | None = None,
+) -> str:
+    """Ключ кэша (ADR-005). У этапа доклада в ключ входит id доклада: выход зависит не только
+    от входов (пакет одних слайдов у двух докладов разный, ADR-013). Ключи этапов файлов
+    от доклада не зависят, поэтому разбор одного файла переиспользуется между конференциями."""
     payload = {
         "stage": stage,
         "stage_version": stage_version,
@@ -80,6 +92,8 @@ def cache_key(stage: str, stage_version: str, input_hashes: list[str], cfg_hash:
         "inputs": sorted(input_hashes),
         "config": cfg_hash,
     }
+    if talk_id is not None:
+        payload["talk"] = str(talk_id)
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
@@ -89,7 +103,9 @@ def make_meta(stage: Stage, inputs: StageInputs, *, stub: bool) -> ArtifactMeta:
         stage=stage.name,
         stage_version=stage.version,
         contract_version=CONTRACT_VERSION,
-        cache_key=cache_key(stage.name, stage.version, input_hashes, inputs.config_hash),
+        cache_key=cache_key(
+            stage.name, stage.version, input_hashes, inputs.config_hash, inputs.talk_id
+        ),
         input_hashes=input_hashes,
         config_hash=inputs.config_hash,
         produced_at=datetime.now(UTC),
@@ -115,6 +131,11 @@ def read_input(ctx: StageContext, inputs: StageInputs, name: str) -> bytes:
     if len(refs) != 1:
         raise ValueError(f"у этапа должен быть ровно один вход {name}")
     return _read_checked(ctx, refs[0])
+
+
+def read_ref(ctx: StageContext, ref: ArtifactRef) -> bytes:
+    """Вход по ссылке с проверкой хэша: для этапов с несколькими входами одного имени."""
+    return _read_checked(ctx, ref)
 
 
 def _read_checked(ctx: StageContext, ref: ArtifactRef) -> bytes:

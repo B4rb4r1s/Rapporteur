@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 
 from rapporteur_contracts import (
     Claim,
@@ -32,6 +32,7 @@ from rapporteur_contracts import (
 from rapporteur_contracts.claims import CheckResult
 from rapporteur_contracts.enums import CheckName, ClaimType, SummaryStatus
 from rapporteur_pipeline.llm.client import LlmClient, Message
+from rapporteur_pipeline.llm.profiles import load_profile
 from rapporteur_pipeline.llm.prompts import PROMPTS_DIR, load_prompt
 from rapporteur_pipeline.llm.structured import ask_structured
 from rapporteur_pipeline.stage import StageContext, make_meta, publish, read_input
@@ -41,10 +42,10 @@ from rapporteur_pipeline.summarize.checks import (
     sentence_range,
     usable_claims,
 )
+from rapporteur_pipeline.summarize.pack import read_pack
 
 FACTS_INPUT = "facts"
 VERIFY_INPUT = "verify"
-PACK_INPUT = "pack"
 STEP = "summary"
 
 _SUMMARY_NAMESPACE = uuid.UUID("9a4e2c71-3b5d-4f8e-a6c0-7d1b2e3f4a5c")
@@ -59,7 +60,8 @@ _KIND = {
 class SummaryConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    profile: ModelProfile
+    # Без профиля в конфигурации этапа — профиль по умолчанию из pipeline/profiles.yaml (ADR-013).
+    profile: ModelProfile = Field(default_factory=load_profile)
     checks: SummaryChecksConfig = SummaryChecksConfig()
     # Сколько раз сводка пишется с замечаниями проверок, прежде чем уйти человеку.
     max_attempts: PositiveInt = 3
@@ -86,7 +88,7 @@ class Written:
 
 class SummaryStage:
     name: ClassVar[str] = "summary"
-    version: ClassVar[str] = "1.0.0"
+    version: ClassVar[str] = "1.1.0"
     config_model: ClassVar[type[BaseModel]] = SummaryConfig
 
     def run(self, ctx: StageContext, inputs: StageInputs) -> StageOutput:
@@ -96,7 +98,7 @@ class SummaryStage:
             raise ValueError("этапу summary нужен клиент модели")
         facts = FactsArtifact.model_validate_json(read_input(ctx, inputs, FACTS_INPUT))
         verified = VerifiedClaimsArtifact.model_validate_json(read_input(ctx, inputs, VERIFY_INPUT))
-        pack = TalkFragmentPack.model_validate_json(read_input(ctx, inputs, PACK_INPUT))
+        pack = read_pack(ctx, inputs)
         if not facts.talk_id == verified.talk_id == pack.talk_id:
             raise ValueError("факты, утверждения и пакет относятся к разным докладам")
 
@@ -166,7 +168,7 @@ def write_summary(
             max_repairs=config.max_repairs,
             seed=config.seed,
         )
-        draft = result.value
+        draft = _punctuated(result.value)
         current = check_summary(draft, claims, pack, config.checks, attempt)
         checks.extend(current)
         failed = [check for check in current if not check.passed]
@@ -185,6 +187,29 @@ def write_summary(
         _linked(draft.conclusions, claims, conclusions=True),
         checks,
         config.max_attempts,
+    )
+
+
+_TERMINAL = ".!?…"
+_CLOSING = '»")]'
+
+
+def _terminated(text: str) -> str:
+    """Строка сводки — законченное предложение. Модель иногда опускает точку, и в справке
+    предложения слились бы в одно; точка ставится после закрывающих кавычек и скобок."""
+    stripped = text.rstrip()
+    core = stripped.rstrip(_CLOSING)
+    if not core or core[-1] in _TERMINAL:
+        return stripped
+    return stripped + "."
+
+
+def _punctuated(draft: SummaryDraft) -> SummaryDraft:
+    def fix(lines: Sequence[SummaryLine]) -> list[SummaryLine]:
+        return [line.model_copy(update={"text": _terminated(line.text)}) for line in lines]
+
+    return draft.model_copy(
+        update={"sentences": fix(draft.sentences), "conclusions": fix(draft.conclusions)}
     )
 
 

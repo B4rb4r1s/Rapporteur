@@ -27,6 +27,9 @@ from rapporteur_contracts import (
     ModelProfile,
     NotesArtifact,
     Person,
+    Report,
+    ReportArtifact,
+    ReportRequest,
     Section,
     SlidesArtifact,
     StageInputs,
@@ -36,7 +39,7 @@ from rapporteur_contracts import (
     VerifiedClaimsArtifact,
 )
 from rapporteur_contracts.entities import TalkParticipant
-from rapporteur_contracts.enums import ClaimStatus, PersonRole, ReportFormat, TalkStatus
+from rapporteur_contracts.enums import ClaimStatus, PersonRole, TalkStatus
 from rapporteur_contracts.registry import (
     RegistryConference,
     RegistrySection,
@@ -46,15 +49,8 @@ from rapporteur_contracts.registry import (
 from rapporteur_pipeline.ingest.notes import NotesStage
 from rapporteur_pipeline.ingest.slides import SlidesStage
 from rapporteur_pipeline.llm.client import LlmClient
-from rapporteur_pipeline.report.assemble import (
-    ReportError,
-    ReportSources,
-    build_report_input,
-    report_variables,
-    select_talks,
-    template_context,
-)
-from rapporteur_pipeline.report.export import ExportError, export_files, render_formats
+from rapporteur_pipeline.report.assemble import ReportError, ReportSources, select_talks
+from rapporteur_pipeline.report.stage import REQUEST_INPUT, ReportConfig, ReportStage
 from rapporteur_pipeline.report.template import TemplateError, load_template
 from rapporteur_pipeline.stage import (
     SOURCE_INPUT,
@@ -73,7 +69,7 @@ from rapporteur_pipeline.storage import (
 )
 from rapporteur_pipeline.stubs import StubFactsStage, StubSummaryStage
 from rapporteur_pipeline.summarize.facts import FactsConfig, FactsStage
-from rapporteur_pipeline.summarize.pack import PackSource, build_pack
+from rapporteur_pipeline.summarize.pack import PackConfig, PackStage
 from rapporteur_pipeline.summarize.quotes import QuoteConfig
 from rapporteur_pipeline.summarize.summary import SummaryConfig, SummaryStage
 from rapporteur_pipeline.summarize.verify import VerifyStage
@@ -82,7 +78,6 @@ PRESENTATION_SUFFIXES = frozenset({".pptx", ".pdf", ".ppt"})
 NOTES_SUFFIXES = frozenset({".txt", ".md"})
 STARTER_TEMPLATE = Path(__file__).resolve().parents[3] / "templates" / "starter"
 REGISTRY_FILE = "registry.yaml"
-REPORT_FORMATS = (ReportFormat.DOCX, ReportFormat.MARKDOWN, ReportFormat.PDF)
 DRAFT_FILE = "registry-draft.yaml"
 
 _NAMESPACE = uuid.UUID("4c8f1e2a-7b3d-4a6e-9f05-1d2c3b4a5e6f")
@@ -128,7 +123,8 @@ def run_cached(
     """Результат с тем же ключом кэша берётся из хранилища без запуска этапа (ADR-005)."""
     cfg_hash = config_hash(config)
     key = artifact_key(
-        stage.name, cache_key(stage.name, stage.version, [a.sha256 for a in artifacts], cfg_hash)
+        stage.name,
+        cache_key(stage.name, stage.version, [a.sha256 for a in artifacts], cfg_hash, talk_id),
     )
     if storage.exists(key):
         data = storage.get(key)
@@ -155,6 +151,8 @@ def put_blob(storage: Storage, data: bytes, name: str = SOURCE_INPUT) -> Artifac
 class ParsedFiles:
     slides: dict[str, tuple[str, SlidesArtifact]] = field(default_factory=dict)
     notes: dict[str, tuple[str, NotesArtifact]] = field(default_factory=dict)
+    # Ссылки на артефакты разбора: входы этапа pack.
+    refs: dict[str, ArtifactRef] = field(default_factory=dict)
     failures: list[str] = field(default_factory=list)
 
 
@@ -175,6 +173,7 @@ def parse_folder(root: Path, storage: Storage, log: Log) -> ParsedFiles:
                 log(f"  {name}: ошибка {error.code}")
                 continue
             data = storage.get(ran.ref.storage_key)
+            parsed.refs[name] = ran.ref
             if stage.name == "slides":
                 parsed.slides[name] = (source.sha256, SlidesArtifact.model_validate_json(data))
             else:
@@ -364,25 +363,20 @@ def summarize_talk(
     stages: LlmStages,
     log: Log,
 ) -> Summary:
-    presentations = [
-        PackSource(_file_id(conference, parsed.slides[name][0]), parsed.slides[name][1].fragments)
-        for name in item.sources.slides
-        if name in parsed.slides
-    ]
-    notes = [
-        PackSource(_file_id(conference, parsed.notes[name][0]), parsed.notes[name][1].fragments)
-        for name in item.sources.notes
-        if name in parsed.notes
-    ]
-    missing = [
-        n
-        for n in [*item.sources.slides, *item.sources.notes]
-        if n not in parsed.slides and n not in parsed.notes
-    ]
+    names = [*item.sources.slides, *item.sources.notes]
+    missing = [n for n in names if n not in parsed.refs]
     if missing:
         log(f"    нет разобранных файлов: {', '.join(missing)}")
-    pack = build_pack(conference.id, talk.id, presentations, notes)
-    pack_ref = put_blob(storage, pack.model_dump_json().encode(), name="pack")
+    # Порядок входов — порядок реестра: презентации, затем заметки (ADR-013).
+    pack = run_cached(
+        PackStage(),
+        storage,
+        PackConfig(),
+        [parsed.refs[n] for n in names if n in parsed.refs],
+        talk_id=talk.id,
+        conference_id=conference.id,
+    )
+    pack_ref = pack.ref
 
     facts = run_cached(
         stages.facts, storage, stages.facts_config, [pack_ref], talk_id=talk.id, llm=stages.client
@@ -408,10 +402,6 @@ def summarize_talk(
     for warning in [*facts.warnings, *verify.warnings, *summary.warnings]:
         log(f"    ! {warning}")
     return result
-
-
-def _file_id(conference: Conference, sha256: str) -> uuid.UUID:
-    return uuid.uuid5(conference.id, f"file:{sha256}")
 
 
 def _timing(ran: Ran) -> str:
@@ -504,19 +494,41 @@ def _build_report(
     unreviewed_confirmed: bool,
     log: Log,
 ) -> list[str]:
+    """Справка тем же этапом report, что и в воркере (ADR-013)."""
     try:
         template = load_template(template_dir)
-        assembled = build_report_input(
-            sources, select_talks(sources), template.spec.version, unreviewed_confirmed
-        )
-        context = template_context(assembled.input, report_variables(assembled.input))
-        with tempfile.TemporaryDirectory(prefix="rapporteur-report-") as tmp:
-            rendered = render_formats(template, context, REPORT_FORMATS, Path(tmp))
-    except (ReportError, TemplateError, ExportError) as error:
+        selection = select_talks(sources)
+    except (ReportError, TemplateError) as error:
         message = error.message if isinstance(error, TemplateError) else str(error)
         raise ChainError(f"Справка не собрана: {message}") from error
-    for warning in assembled.warnings:
+    request = ReportRequest(
+        report=Report(
+            id=uuid.uuid5(_NAMESPACE, "report"),
+            author_id=_LOCAL_USER,
+            conference_id=sources.conference.id,
+            selection=selection,
+            template_version=template.spec.version,
+            version=1,
+        ),
+        conference=sources.conference,
+        sections=list(sources.sections),
+        talks=list(sources.talks),
+        people=list(sources.people),
+        summaries=list(sources.summaries),
+        unreviewed_confirmed=unreviewed_confirmed,
+    )
+    request_ref = put_blob(storage, request.model_dump_json().encode(), name=REQUEST_INPUT)
+    try:
+        ran = run_cached(
+            ReportStage(templates_dir=template_dir.parent),
+            storage,
+            ReportConfig(template=template_dir.name),
+            [request_ref],
+            conference_id=sources.conference.id,
+        )
+    except StageError as error:
+        raise ChainError(f"Справка не собрана: {error.message}") from error
+    for warning in ran.warnings:
         log(f"  ! {warning}")
-    version_id = sha256_hex(assembled.input.model_dump_json().encode())[:12]
-    files = export_files(storage, version_id, rendered)
-    return [str(data_dir / file.storage_key) for file in files]
+    artifact = ReportArtifact.model_validate_json(storage.get(ran.ref.storage_key))
+    return [str(data_dir / file.storage_key) for file in artifact.files]

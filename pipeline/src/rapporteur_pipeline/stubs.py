@@ -21,7 +21,6 @@ from rapporteur_contracts import (
     StageOutput,
     SummaryArtifact,
     SummaryLine,
-    TalkFragmentPack,
     TranscriptArtifact,
     VerifiedClaimsArtifact,
 )
@@ -38,9 +37,9 @@ from rapporteur_pipeline.stage import (
     single_source,
 )
 from rapporteur_pipeline.storage import derived_key
-from rapporteur_pipeline.summarize import facts as facts_step
 from rapporteur_pipeline.summarize import summary as summary_step
 from rapporteur_pipeline.summarize.checks import usable_claims
+from rapporteur_pipeline.summarize.pack import read_pack
 
 _STUB_WARNING = "Результат заглушки: файл не разбирался"
 _SLIDE_TEXT = (
@@ -144,7 +143,7 @@ class StubFactsStage:
     config_model: ClassVar[type[BaseModel]] = StubLlmConfig
 
     def run(self, ctx: StageContext, inputs: StageInputs) -> StageOutput:
-        pack = TalkFragmentPack.model_validate_json(read_input(ctx, inputs, facts_step.PACK_INPUT))
+        pack = read_pack(ctx, inputs)
         meta = make_meta(self, inputs, stub=True)
         source = next((f for f in pack.fragments if len(f.text.strip()) >= 10), None)
         problem = None
@@ -187,9 +186,7 @@ class StubSummaryStage:
         verified = VerifiedClaimsArtifact.model_validate_json(
             read_input(ctx, inputs, summary_step.VERIFY_INPUT)
         )
-        pack = TalkFragmentPack.model_validate_json(
-            read_input(ctx, inputs, summary_step.PACK_INPUT)
-        )
+        pack = read_pack(ctx, inputs)
         meta = make_meta(self, inputs, stub=True)
         usable = usable_claims(verified.claims)
         sentences = [SummaryLine(text=_STUB_SUMMARY, claim_ids=[usable[0].key])] if usable else []

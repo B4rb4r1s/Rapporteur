@@ -208,3 +208,18 @@
   base: ReportInput--with-skipped.json
   set: {unreviewed_confirmed: false}
   expect: unreviewed_not_confirmed
+- name: запрос сборки по чужой конференции
+  model: ReportRequest
+  base: ReportRequest--basic.json
+  set: {report.conference_id: 00000000-0000-4000-8000-000000000999}
+  expect: report_conference_mismatch
+- name: доклад выборки не передан в запросе сборки
+  model: ReportRequest
+  base: ReportRequest--basic.json
+  set: {report.selection.talk_ids.1: 00000000-0000-4000-8000-000000000999}
+  expect: selection_talk_unknown
+- name: в запросе сборки сводка чужого доклада
+  model: ReportRequest
+  base: ReportRequest--basic.json
+  set: {summaries.0.talk_id: 00000000-0000-4000-8000-000000000999}
+  expect: summary_talk_mismatch

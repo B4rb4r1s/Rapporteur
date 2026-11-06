@@ -1328,6 +1328,24 @@
       "title": "NotesArtifact",
       "type": "object"
     },
+    "PackArtifact": {
+      "additionalProperties": false,
+      "description": "pack.json: пакет фрагментов одного доклада, общий вход шагов сводки (ADR-013).",
+      "properties": {
+        "meta": {
+          "$ref": "#/$defs/ArtifactMeta"
+        },
+        "pack": {
+          "$ref": "#/$defs/TalkFragmentPack"
+        }
+      },
+      "required": [
+        "meta",
+        "pack"
+      ],
+      "title": "PackArtifact",
+      "type": "object"
+    },
     "PackBlock": {
       "enum": [
         "main",
@@ -1847,7 +1865,7 @@
     },
     "ReportArtifact": {
       "additionalProperties": false,
-      "description": "Выдача сборки справки.",
+      "description": "Выдача задачи report. input, variables и files переходят в ReportVersion (ADR-013).",
       "properties": {
         "files": {
           "items": {
@@ -1855,6 +1873,9 @@
           },
           "title": "Files",
           "type": "array"
+        },
+        "input": {
+          "$ref": "#/$defs/ReportInput"
         },
         "meta": {
           "$ref": "#/$defs/ArtifactMeta"
@@ -1871,6 +1892,7 @@
       "required": [
         "meta",
         "report_id",
+        "input",
         "variables",
         "files"
       ],
@@ -2021,6 +2043,61 @@
         "unreviewed_confirmed"
       ],
       "title": "ReportInput",
+      "type": "object"
+    },
+    "ReportRequest": {
+      "additionalProperties": false,
+      "description": "Вход задачи report (ADR-013): снимок данных конференции на момент запроса сборки,\nвключая текущие сводки докладов, в том числе исправленные человеком.",
+      "properties": {
+        "conference": {
+          "$ref": "#/$defs/Conference"
+        },
+        "people": {
+          "items": {
+            "$ref": "#/$defs/Person"
+          },
+          "title": "People",
+          "type": "array"
+        },
+        "report": {
+          "$ref": "#/$defs/Report"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/Section"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "summaries": {
+          "items": {
+            "$ref": "#/$defs/Summary"
+          },
+          "title": "Summaries",
+          "type": "array"
+        },
+        "talks": {
+          "items": {
+            "$ref": "#/$defs/Talk"
+          },
+          "title": "Talks",
+          "type": "array"
+        },
+        "unreviewed_confirmed": {
+          "title": "Unreviewed Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "report",
+        "conference",
+        "sections",
+        "talks",
+        "people",
+        "summaries",
+        "unreviewed_confirmed"
+      ],
+      "title": "ReportRequest",
       "type": "object"
     },
     "ReportSelection": {
@@ -3472,5 +3549,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RapporteurContracts",
-  "version": "0.3.0"
+  "version": "0.5.0"
 }

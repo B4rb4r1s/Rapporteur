@@ -17,7 +17,9 @@ from rapporteur_contracts.enums import ResourceKind, StageScope
 GRAPH_FILE = Path(__file__).resolve().parents[2] / "graph.yaml"
 
 # Шаг сводки работает с содержанием одного доклада: изоляция докладов (spec §3, п. 1).
-SUMMARY_OUTPUTS = frozenset({"FactsArtifact", "VerifiedClaimsArtifact", "SummaryArtifact"})
+SUMMARY_OUTPUTS = frozenset(
+    {"PackArtifact", "FactsArtifact", "VerifiedClaimsArtifact", "SummaryArtifact"}
+)
 
 
 class GraphError(Exception):
