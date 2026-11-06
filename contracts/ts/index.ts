@@ -1,5 +1,5 @@
 // Сгенерировано из schema/all.schema.json командой make generate. Не редактировать.
-// Версия контрактов: 0.4.0
+// Версия контрактов: 0.5.0
 
 /**
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
@@ -115,14 +115,14 @@ export type StageScope = "conference" | "file" | "talk";
 export type ReportFormat = "md" | "docx" | "pdf";
 /**
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "SegmentKind".
- */
-export type SegmentKind = "talk" | "qa" | "service";
-/**
- * This interface was referenced by `RapporteurContracts`'s JSON-Schema
  * via the `definition` "SummaryStatus".
  */
 export type SummaryStatus = "ready" | "needs_attention" | "stale";
+/**
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "SegmentKind".
+ */
+export type SegmentKind = "talk" | "qa" | "service";
 
 export interface RapporteurContracts {
   [k: string]: unknown;
@@ -729,8 +729,8 @@ export interface ReportVariables {
   talks_count: number;
 }
 /**
- * Вход задачи report (ADR-013): данные конференции на момент запроса сборки.
- * Сводки выбранных докладов приходят отдельными входами SummaryArtifact.
+ * Вход задачи report (ADR-013): снимок данных конференции на момент запроса сборки,
+ * включая текущие сводки докладов, в том числе исправленные человеком.
  *
  * This interface was referenced by `RapporteurContracts`'s JSON-Schema
  * via the `definition` "ReportRequest".
@@ -740,6 +740,7 @@ export interface ReportRequest {
   people: Person[];
   report: Report;
   sections: Section[];
+  summaries: Summary[];
   talks: Talk[];
   unreviewed_confirmed: boolean;
 }
@@ -756,6 +757,43 @@ export interface Section {
   id: string;
   order: number;
   title: string;
+}
+/**
+ * Сводка доклада: версия, утверждения, текст и результаты всех проверок.
+ *
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "Summary".
+ */
+export interface Summary {
+  checks: CheckResult[];
+  claims: Claim[];
+  conclusions: SummaryLine[];
+  created_at: string;
+  edited_by: string | null;
+  facts: FactsDraft;
+  id: string;
+  input_revision_ids: string[];
+  profile: string;
+  prompt_versions: {
+    [k: string]: string;
+  };
+  sentences: SummaryLine[];
+  status: SummaryStatus;
+  talk_id: string;
+  version: number;
+}
+/**
+ * Предложение сводки или пункт выводов со ссылками на утверждения.
+ *
+ * This interface was referenced by `RapporteurContracts`'s JSON-Schema
+ * via the `definition` "SummaryLine".
+ */
+export interface SummaryLine {
+  /**
+   * @minItems 1
+   */
+  claim_ids: [string, ...string[]];
+  text: string;
 }
 /**
  * Доклад реестра. Название и докладчики в справку идут отсюда, а не из ответа модели.
@@ -915,43 +953,6 @@ export interface StageOutput {
   artifact: ArtifactRef;
   meta: ArtifactMeta;
   warnings: string[];
-}
-/**
- * Сводка доклада: версия, утверждения, текст и результаты всех проверок.
- *
- * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "Summary".
- */
-export interface Summary {
-  checks: CheckResult[];
-  claims: Claim[];
-  conclusions: SummaryLine[];
-  created_at: string;
-  edited_by: string | null;
-  facts: FactsDraft;
-  id: string;
-  input_revision_ids: string[];
-  profile: string;
-  prompt_versions: {
-    [k: string]: string;
-  };
-  sentences: SummaryLine[];
-  status: SummaryStatus;
-  talk_id: string;
-  version: number;
-}
-/**
- * Предложение сводки или пункт выводов со ссылками на утверждения.
- *
- * This interface was referenced by `RapporteurContracts`'s JSON-Schema
- * via the `definition` "SummaryLine".
- */
-export interface SummaryLine {
-  /**
-   * @minItems 1
-   */
-  claim_ids: [string, ...string[]];
-  text: string;
 }
 /**
  * summary.json, шаги В и Г.

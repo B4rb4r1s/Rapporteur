@@ -8,6 +8,7 @@ from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
 from pydantic_core import PydanticCustomError
 
 from rapporteur_contracts.base import ContractModel, NonEmptyStr, Sha256, UtcDatetime
+from rapporteur_contracts.claims import Summary
 from rapporteur_contracts.entities import Conference, Person, Section, Talk
 from rapporteur_contracts.enums import (
     REPORTABLE_TALK_STATUSES,
@@ -119,14 +120,15 @@ class ReportVersion(ContractModel):
 
 
 class ReportRequest(ContractModel):
-    """Вход задачи report (ADR-013): данные конференции на момент запроса сборки.
-    Сводки выбранных докладов приходят отдельными входами SummaryArtifact."""
+    """Вход задачи report (ADR-013): снимок данных конференции на момент запроса сборки,
+    включая текущие сводки докладов, в том числе исправленные человеком."""
 
     report: Report
     conference: Conference
     sections: list[Section]
     talks: list[Talk]
     people: list[Person]
+    summaries: list[Summary]
     unreviewed_confirmed: bool
 
     @model_validator(mode="after")
@@ -142,8 +144,15 @@ class ReportRequest(ContractModel):
             )
         if any(talk.section_id not in section_ids for talk in self.talks):
             raise PydanticCustomError("talk_section_unknown", "доклад из неизвестной секции")
-        if not set(self.report.selection.talk_ids) <= {talk.id for talk in self.talks}:
+        talk_ids = {talk.id for talk in self.talks}
+        if not set(self.report.selection.talk_ids) <= talk_ids:
             raise PydanticCustomError(
                 "selection_talk_unknown", "в выборке есть доклад, которого нет в запросе"
+            )
+        summarized = [summary.talk_id for summary in self.summaries]
+        if len(set(summarized)) != len(summarized) or not set(summarized) <= talk_ids:
+            raise PydanticCustomError(
+                "summary_talk_mismatch",
+                "у доклада запроса одна текущая сводка, сводок чужих докладов нет",
             )
         return self

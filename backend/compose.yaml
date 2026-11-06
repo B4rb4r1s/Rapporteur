@@ -14,6 +14,8 @@ x-py: &py
     - ../contracts:/repo/contracts:ro
     - ../pipeline:/repo/pipeline:ro
     - ../workers:/repo/workers:ro
+    # Бланк справки: тесты сборки исполняют этап report в процессе backend.
+    - ../templates:/repo/templates:ro
   environment:
     HOME: /tmp
     TEST_DATABASE_URL: "host=db dbname=postgres user=rapporteur password=backend-dev-only"

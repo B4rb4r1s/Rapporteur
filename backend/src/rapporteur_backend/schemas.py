@@ -6,6 +6,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
 from rapporteur_contracts.base import NonEmptyStr, Probability
+from rapporteur_contracts.claims import ClaimKey, SummaryLine
 from rapporteur_contracts.entities import TalkParticipant
 from rapporteur_contracts.enums import TalkStatus, TalkType
 from rapporteur_contracts.reports import ReportSelection
@@ -78,3 +79,24 @@ class ReportWrite(WriteModel):
 
 class PriorityWrite(WriteModel):
     priority: int
+
+
+class ClaimEdit(WriteModel):
+    """Новый текст утверждения: правка снимает с него подтверждение (spec §6.8)."""
+
+    key: ClaimKey
+    text: NonEmptyStr
+
+
+class SummaryEdit(WriteModel):
+    """Текст сводки после правки человеком: предложения и выводы со ссылками на утверждения."""
+
+    sentences: list[SummaryLine] = Field(min_length=1)
+    conclusions: list[SummaryLine] = Field(max_length=3)
+    claims: list[ClaimEdit] = Field(default_factory=list)
+
+
+class ReportBuild(WriteModel):
+    """Запрос сборки. Непроверенные доклады входят только с явным подтверждением (ADR-006)."""
+
+    unreviewed_confirmed: bool = False

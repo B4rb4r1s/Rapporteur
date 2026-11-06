@@ -1,20 +1,15 @@
 """Этап report: справка по запросу сборки и сводкам из артефактов (ADR-013)."""
 
-import datetime as dt
 import uuid
 from pathlib import Path
 
 import pytest
 
 from rapporteur_contracts import (
-    CONTRACT_VERSION,
-    ArtifactMeta,
     ArtifactRef,
     Report,
     ReportArtifact,
     ReportRequest,
-    Summary,
-    SummaryArtifact,
 )
 from rapporteur_contracts.enums import ReportFormat
 from rapporteur_pipeline.chain import put_blob, run_cached
@@ -55,28 +50,13 @@ def request(
         sections=SECTIONS,
         talks=TALKS,
         people=PEOPLE,
+        summaries=SUMMARIES,
         unreviewed_confirmed=unreviewed_confirmed,
     )
 
 
-def summary_ref(storage: DirectoryStorage, value: Summary) -> ArtifactRef:
-    meta = ArtifactMeta(
-        stage="summary",
-        stage_version="test",
-        contract_version=CONTRACT_VERSION,
-        cache_key=sha256_hex(str(value.id).encode()),
-        input_hashes=[],
-        config_hash="0" * 64,
-        produced_at=dt.datetime(2026, 11, 5, tzinfo=dt.UTC),
-        stub=False,
-    )
-    data = SummaryArtifact(meta=meta, summary=value).model_dump_json().encode()
-    return put_blob(storage, data, name="summary")
-
-
 def inputs(storage: DirectoryStorage, value: ReportRequest) -> list[ArtifactRef]:
-    request_ref = put_blob(storage, value.model_dump_json().encode(), name=REQUEST_INPUT)
-    return [request_ref, *(summary_ref(storage, item) for item in SUMMARIES)]
+    return [put_blob(storage, value.model_dump_json().encode(), name=REQUEST_INPUT)]
 
 
 def test_report_artifact_carries_the_input_snapshot_and_files(storage: DirectoryStorage) -> None:

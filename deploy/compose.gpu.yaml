@@ -1,5 +1,9 @@
 # Подключается только при PROFILE=gpu: dev не требует каталога весов или GPU.
 services:
+  web:
+    environment:
+      RAPPORTEUR_MODE: gpu
+
   scheduler:
     environment:
       RAPPORTEUR_MODE: gpu

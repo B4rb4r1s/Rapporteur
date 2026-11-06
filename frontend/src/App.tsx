@@ -1,6 +1,33 @@
 import { useEffect, useState } from 'react';
 
 import { Materials, request, type Conference } from './Materials';
+import { Processing, type TalkProgress } from './Processing';
+import { ReportPanel } from './ReportPanel';
+import { SummaryReview } from './SummaryReview';
+
+type Tab = 'materials' | 'processing' | 'report';
+const tabs: [Tab, string][] = [['materials', 'Материалы'], ['processing', 'Обработка'], ['report', 'Справка']];
+
+function Workspace({ conferenceId }: { conferenceId: string }) {
+  const [tab, setTab] = useState<Tab>('materials');
+  const [talk, setTalk] = useState<TalkProgress>();
+  return (
+    <>
+      <nav aria-label="Разделы конференции">
+        {tabs.map(([value, label]) => (
+          <button key={value} aria-current={tab === value ? 'page' : undefined} onClick={() => { setTab(value); setTalk(undefined); }}>
+            {label}
+          </button>
+        ))}
+      </nav>
+      {tab === 'materials' && <Materials conferenceId={conferenceId} />}
+      {tab === 'processing' && (talk
+        ? <SummaryReview talkId={talk.id} title={talk.title ?? 'Доклад без названия'} onClose={() => setTalk(undefined)} />
+        : <Processing conferenceId={conferenceId} onOpen={setTalk} />)}
+      {tab === 'report' && <ReportPanel conferenceId={conferenceId} />}
+    </>
+  );
+}
 
 export function App() {
   const [conferences, setConferences] = useState<Conference[]>([]);
@@ -73,7 +100,7 @@ export function App() {
         <button disabled={saving || !title.trim()}>Создать</button>
       </form>
       {error && <p role="alert">{error}</p>}
-      {selected && <Materials key={selected} conferenceId={selected} />}
+      {selected && <Workspace key={selected} conferenceId={selected} />}
     </main>
   );
 }

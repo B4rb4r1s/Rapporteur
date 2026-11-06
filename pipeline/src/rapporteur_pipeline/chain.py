@@ -362,7 +362,7 @@ def summarize_talk(
     storage: Storage,
     stages: LlmStages,
     log: Log,
-) -> tuple[Summary, ArtifactRef]:
+) -> Summary:
     names = [*item.sources.slides, *item.sources.notes]
     missing = [n for n in names if n not in parsed.refs]
     if missing:
@@ -401,7 +401,7 @@ def summarize_talk(
     )
     for warning in [*facts.warnings, *verify.warnings, *summary.warnings]:
         log(f"    ! {warning}")
-    return result, summary.ref
+    return result
 
 
 def _timing(ran: Ran) -> str:
@@ -446,7 +446,6 @@ def run_report(
     entities = registry_entities(registry, title=title, place=place, dates=dates)
     stages = llm_stages(profile, client)
     summaries: list[Summary] = []
-    summary_refs: list[ArtifactRef] = []
     talks: list[Talk] = []
     working = [t for t in entities.talks if t.status in _WORKING_STATUSES]
     chosen = {t.id for t in working[:limit]} if limit is not None else {t.id for t in working}
@@ -457,7 +456,7 @@ def run_report(
         name = talk.title or entities.registry_talks[talk.id].id
         log(f"[{number}/{len(entities.talks)}] «{name}»")
         try:
-            summary, summary_ref = summarize_talk(
+            summary = summarize_talk(
                 talk,
                 entities.registry_talks[talk.id],
                 entities.conference,
@@ -474,7 +473,6 @@ def run_report(
             talks.append(talk)
             continue
         summaries.append(summary)
-        summary_refs.append(summary_ref)
         talks.append(talk.model_copy(update={"status": TalkStatus.PROCESSED}))
 
     sources = ReportSources(
@@ -484,15 +482,12 @@ def run_report(
         people=entities.people,
         summaries=summaries,
     )
-    files = _build_report(
-        sources, summary_refs, storage, data_dir, template_dir, unreviewed_confirmed, log
-    )
+    files = _build_report(sources, storage, data_dir, template_dir, unreviewed_confirmed, log)
     return ReportRun(files=files, failures=failures)
 
 
 def _build_report(
     sources: ReportSources,
-    summary_refs: list[ArtifactRef],
     storage: Storage,
     data_dir: Path,
     template_dir: Path,
@@ -519,6 +514,7 @@ def _build_report(
         sections=list(sources.sections),
         talks=list(sources.talks),
         people=list(sources.people),
+        summaries=list(sources.summaries),
         unreviewed_confirmed=unreviewed_confirmed,
     )
     request_ref = put_blob(storage, request.model_dump_json().encode(), name=REQUEST_INPUT)
@@ -527,7 +523,7 @@ def _build_report(
             ReportStage(templates_dir=template_dir.parent),
             storage,
             ReportConfig(template=template_dir.name),
-            [request_ref, *summary_refs],
+            [request_ref],
             conference_id=sources.conference.id,
         )
     except StageError as error:
