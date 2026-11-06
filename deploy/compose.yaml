@@ -44,6 +44,8 @@ services:
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     environment:
       HOME: /tmp
+      # Режим воркеров: в нём web ставит сборку справки и показывает ход обработки.
+      RAPPORTEUR_MODE: dev
       PGHOST: db
       PGDATABASE: ${POSTGRES_DB:-rapporteur}
       PGUSER: ${POSTGRES_USER:-rapporteur}
@@ -144,6 +146,13 @@ services:
     profiles: [dev, gpu]
     restart: unless-stopped
     command: [rapporteur-backend, schedule]
+    # Читает артефакты сводок и справок, чтобы перенести их в БД (ADR-013).
+    volumes: [data:/data:ro]
+    depends_on:
+      db:
+        condition: service_healthy
+      init-data:
+        condition: service_completed_successfully
 
   # Эти сервисы запускаются явно и завершаются; up их не оставляет работать.
   migrate:

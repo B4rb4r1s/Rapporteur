@@ -6,6 +6,9 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, text
 
+# Последняя ревизия: /ready проверяет, что база мигрирована до неё.
+MIGRATION_HEAD = "0004_summaries"
+
 
 def migration_config() -> Config:
     config = Config()

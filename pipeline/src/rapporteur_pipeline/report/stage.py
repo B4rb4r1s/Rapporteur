@@ -1,7 +1,7 @@
 """Этап report: справка по запросу сборки и сводкам выбранных докладов (spec §6.9, ADR-013).
 
 Этап не входит в граф: задачу ставит backend, когда пользователь собирает справку. Вход —
-ReportRequest (name report_request) и SummaryArtifact выбранных докладов (name summary).
+ReportRequest (name report_request) с текущими сводками, в том числе исправленными человеком.
 Выход — ReportArtifact со снимком ReportInput и файлами DOCX, Markdown и PDF.
 """
 
@@ -15,7 +15,6 @@ from rapporteur_contracts import (
     ReportRequest,
     StageInputs,
     StageOutput,
-    SummaryArtifact,
 )
 from rapporteur_contracts.enums import ReportFormat
 from rapporteur_pipeline.report.assemble import (
@@ -34,12 +33,10 @@ from rapporteur_pipeline.stage import (
     make_meta,
     publish,
     read_input,
-    read_ref,
 )
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[4] / "templates"
 REQUEST_INPUT = "report_request"
-SUMMARY_INPUT = "summary"
 REPORT_FORMATS = (ReportFormat.DOCX, ReportFormat.MARKDOWN, ReportFormat.PDF)
 
 
@@ -62,21 +59,16 @@ class ReportStage:
     def run(self, ctx: StageContext, inputs: StageInputs) -> StageOutput:
         config = ctx.config
         assert isinstance(config, ReportConfig)
-        request = ReportRequest.model_validate_json(read_input(ctx, inputs, REQUEST_INPUT))
-        summaries = [
-            SummaryArtifact.model_validate_json(read_ref(ctx, ref)).summary
-            for ref in inputs.artifacts
-            if ref.name == SUMMARY_INPUT
-        ]
-        unknown = {ref.name for ref in inputs.artifacts} - {REQUEST_INPUT, SUMMARY_INPUT}
+        unknown = {ref.name for ref in inputs.artifacts} - {REQUEST_INPUT}
         if unknown:
             raise ValueError(f"этап report не принимает входы {', '.join(sorted(unknown))}")
+        request = ReportRequest.model_validate_json(read_input(ctx, inputs, REQUEST_INPUT))
         sources = ReportSources(
             conference=request.conference,
             sections=request.sections,
             talks=request.talks,
             people=request.people,
-            summaries=summaries,
+            summaries=request.summaries,
         )
         meta = make_meta(self, inputs, stub=False)
         try:

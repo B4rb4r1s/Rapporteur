@@ -16,7 +16,10 @@ from rapporteur_backend.db import configured_url, make_engine
 from rapporteur_backend.errors import ApiRequestError, install_errors
 from rapporteur_backend.jobs import router as job_router
 from rapporteur_backend.material_routes import router as material_router
+from rapporteur_backend.migrate import MIGRATION_HEAD
+from rapporteur_backend.report_routes import router as report_router
 from rapporteur_backend.routes import engine, router
+from rapporteur_backend.summary_routes import router as summary_router
 from rapporteur_contracts.enums import ApiErrorCode
 
 
@@ -29,6 +32,7 @@ def create_app(
     static_dir: Path | None = None,
     database_url: str | URL | None = None,
     storage_dir: Path | None = None,
+    mode: str | None = None,
 ) -> FastAPI:
     url = database_url if database_url is not None else configured_url()
     database = make_engine(url) if url is not None else None
@@ -50,10 +54,16 @@ def create_app(
     )
     app.state.database = database
     app.state.storage_dir = storage_dir or Path(os.environ.get("RAPPORTEUR_DATA_DIR", "/data"))
+    # Режим воркеров: в нём ставится сборка справки и читается ход обработки.
+    app.state.mode = mode or os.environ.get("RAPPORTEUR_MODE", "dev")
+    if app.state.mode not in {"dev", "gpu"}:
+        raise RuntimeError("RAPPORTEUR_MODE должен быть dev или gpu")
     install_errors(app)
     app.include_router(router)
     app.include_router(job_router)
     app.include_router(material_router)
+    app.include_router(summary_router)
+    app.include_router(report_router)
 
     @app.get("/health")
     def health() -> Health:
@@ -62,7 +72,7 @@ def create_app(
     @app.get("/ready", response_model=Health)
     def ready(request: Request) -> Health:
         with engine(request).begin() as conn:
-            if conn.scalar(text("SELECT version_num FROM alembic_version")) != "0003_processing":
+            if conn.scalar(text("SELECT version_num FROM alembic_version")) != MIGRATION_HEAD:
                 raise ApiRequestError(
                     ApiErrorCode.INTERNAL_ERROR, "Нужна совместимая миграция backend"
                 )

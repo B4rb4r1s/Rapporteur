@@ -154,6 +154,27 @@ report_versions = sa.Table(
     sa.Column("created_by", UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False),
 )
 
+# Версия сводки доклада. job_id — задача summary, из которой версия перенесена; у правки
+# человека его нет, зато есть created_by. Текущая версия — с наибольшим number (ADR-013).
+summaries = sa.Table(
+    "summaries",
+    metadata,
+    sa.Column("id", UUID(as_uuid=True), primary_key=True),
+    sa.Column(
+        "talk_id",
+        UUID(as_uuid=True),
+        sa.ForeignKey("talks.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    sa.Column("number", sa.Integer, nullable=False),
+    sa.Column("summary", JSONB, nullable=False),
+    sa.Column("pack", JSONB, nullable=False),
+    sa.Column("job_id", UUID(as_uuid=True), unique=True),
+    sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("created_by", UUID(as_uuid=True), sa.ForeignKey("users.id")),
+    sa.UniqueConstraint("talk_id", "number", name="summaries_talk_number_key"),
+)
+
 source_files = sa.Table(
     "source_files",
     metadata,
