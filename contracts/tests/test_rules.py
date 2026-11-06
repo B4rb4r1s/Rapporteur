@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import UUID, uuid5
 
 import pytest
 from pydantic import ValidationError
@@ -12,6 +13,7 @@ from rapporteur_contracts import (
     TALK_TRANSITIONS,
     TalkSummaryBundle,
     can_transition,
+    source_file_id,
 )
 from rapporteur_contracts.enums import ApiErrorCode, InferenceEngine, TalkStatus
 from rapporteur_contracts.export import bundle_schema
@@ -91,3 +93,20 @@ def test_empty_span_is_rejected() -> None:
 
 def test_bundle_schema_contains_nested_models() -> None:
     assert {"Claim", "Evidence", "PackedFragment", "StageSpec"} <= set(bundle_schema()["$defs"])
+
+
+def test_source_file_id_is_stable_per_conference_and_sha() -> None:
+    conference = UUID("00000000-0000-4000-8000-000000000001")
+    other = UUID("00000000-0000-4000-8000-000000000002")
+    sha = "a" * 64
+    assert source_file_id(conference, sha) == source_file_id(conference, sha)
+    assert source_file_id(conference, sha) != source_file_id(other, sha)
+    assert source_file_id(conference, sha) != source_file_id(conference, "b" * 64)
+    # Значение закреплено: от него зависят id в БД и в пакетах фрагментов (ADR-013).
+    assert source_file_id(conference, sha) == uuid5(conference, f"file:{sha}")
+
+
+@pytest.mark.parametrize("sha", ["A" * 64, "a" * 63, "not-a-sha"])
+def test_source_file_id_rejects_non_canonical_sha(sha: str) -> None:
+    with pytest.raises(ValueError, match="sha256"):
+        source_file_id(UUID("00000000-0000-4000-8000-000000000001"), sha)

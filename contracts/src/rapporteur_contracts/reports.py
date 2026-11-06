@@ -8,6 +8,7 @@ from pydantic import Field, NonNegativeInt, PositiveInt, model_validator
 from pydantic_core import PydanticCustomError
 
 from rapporteur_contracts.base import ContractModel, NonEmptyStr, Sha256, UtcDatetime
+from rapporteur_contracts.entities import Conference, Person, Section, Talk
 from rapporteur_contracts.enums import (
     REPORTABLE_TALK_STATUSES,
     ReportFormat,
@@ -115,3 +116,34 @@ class ReportVersion(ContractModel):
     variables: ReportVariables
     files: list[ReportFile]
     created_at: UtcDatetime
+
+
+class ReportRequest(ContractModel):
+    """Вход задачи report (ADR-013): данные конференции на момент запроса сборки.
+    Сводки выбранных докладов приходят отдельными входами SummaryArtifact."""
+
+    report: Report
+    conference: Conference
+    sections: list[Section]
+    talks: list[Talk]
+    people: list[Person]
+    unreviewed_confirmed: bool
+
+    @model_validator(mode="after")
+    def _one_conference(self) -> Self:
+        if self.report.conference_id != self.conference.id:
+            raise PydanticCustomError(
+                "report_conference_mismatch", "справка относится к другой конференции"
+            )
+        section_ids = {section.id for section in self.sections}
+        if any(section.conference_id != self.conference.id for section in self.sections):
+            raise PydanticCustomError(
+                "section_conference_mismatch", "секция относится к другой конференции"
+            )
+        if any(talk.section_id not in section_ids for talk in self.talks):
+            raise PydanticCustomError("talk_section_unknown", "доклад из неизвестной секции")
+        if not set(self.report.selection.talk_ids) <= {talk.id for talk in self.talks}:
+            raise PydanticCustomError(
+                "selection_talk_unknown", "в выборке есть доклад, которого нет в запросе"
+            )
+        return self

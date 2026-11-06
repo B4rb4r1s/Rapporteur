@@ -26,7 +26,7 @@ OUTPUTS: dict[str, type[BaseModel]] = {
 
 def valid_meta(meta: ArtifactMeta, stage: Stage, inputs: StageInputs, mode: Mode) -> bool:
     hashes = [ref.sha256 for ref in inputs.artifacts]
-    expected = cache_key(stage.name, stage.version, hashes, inputs.config_hash)
+    expected = cache_key(stage.name, stage.version, hashes, inputs.config_hash, inputs.talk_id)
     return (
         meta.stage == stage.name
         and meta.stage_version == stage.version
@@ -44,7 +44,11 @@ def cached_output(
     key = artifact_key(
         stage.name,
         cache_key(
-            stage.name, stage.version, [ref.sha256 for ref in inputs.artifacts], inputs.config_hash
+            stage.name,
+            stage.version,
+            [ref.sha256 for ref in inputs.artifacts],
+            inputs.config_hash,
+            inputs.talk_id,
         ),
     )
     if stage.name not in OUTPUTS or not storage.exists(key):

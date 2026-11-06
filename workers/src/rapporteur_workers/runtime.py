@@ -16,7 +16,7 @@ from rapporteur_pipeline.stage import StageContext, StageError, config_hash
 from rapporteur_pipeline.storage import DirectoryStorage, Storage
 from rapporteur_workers.cache import cached_output
 from rapporteur_workers.queue import Mode, Queue, QueueJob
-from rapporteur_workers.stages import RESOURCES, get_stage
+from rapporteur_workers.stages import RESOURCES, get_stage, llm_client
 
 
 def log(event: str, **fields: str | int | bool) -> None:
@@ -103,7 +103,10 @@ def execute(queue: Queue, job: QueueJob, storage: Storage, health_file: Path) ->
         with tempfile.TemporaryDirectory(prefix="rapporteur-attempt-") as tmp:
             buffered = BufferedStorage(storage, Path(tmp) / "pending")
             output = stage.run(
-                StageContext(storage=buffered, config=config, tmp_dir=Path(tmp)), job.inputs
+                StageContext(
+                    storage=buffered, config=config, tmp_dir=Path(tmp), llm=llm_client(config)
+                ),
+                job.inputs,
             )
             if job.mode == "gpu" and output.meta.stub:
                 raise ValueError("Заглушка запрещена в режиме gpu")

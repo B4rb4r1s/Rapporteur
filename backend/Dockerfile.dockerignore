@@ -7,6 +7,7 @@
 !pipeline
 !pipeline/pyproject.toml
 !pipeline/graph.yaml
+!pipeline/profiles.yaml
 !pipeline/src
 !pipeline/src/**
 !workers

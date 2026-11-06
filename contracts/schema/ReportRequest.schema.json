@@ -1,0 +1,472 @@
+{
+  "$defs": {
+    "Conference": {
+      "additionalProperties": false,
+      "description": "Конференция. Неизвестные сведения остаются пустыми (spec §4.2).",
+      "properties": {
+        "end_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "End Date"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "organizer": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Organizer"
+        },
+        "owner_id": {
+          "format": "uuid",
+          "title": "Owner Id",
+          "type": "string"
+        },
+        "place": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Place"
+        },
+        "start_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Start Date"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Title"
+        },
+        "version": {
+          "exclusiveMinimum": 0,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "owner_id",
+        "title",
+        "start_date",
+        "end_date",
+        "place",
+        "organizer",
+        "version"
+      ],
+      "title": "Conference",
+      "type": "object"
+    },
+    "Person": {
+      "additionalProperties": false,
+      "properties": {
+        "affiliation": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Affiliation"
+        },
+        "full_name": {
+          "minLength": 1,
+          "title": "Full Name",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "full_name",
+        "affiliation"
+      ],
+      "title": "Person",
+      "type": "object"
+    },
+    "PersonRole": {
+      "enum": [
+        "speaker",
+        "coauthor"
+      ],
+      "title": "PersonRole",
+      "type": "string"
+    },
+    "Report": {
+      "additionalProperties": false,
+      "properties": {
+        "author_id": {
+          "format": "uuid",
+          "title": "Author Id",
+          "type": "string"
+        },
+        "conference_id": {
+          "format": "uuid",
+          "title": "Conference Id",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "selection": {
+          "$ref": "#/$defs/ReportSelection"
+        },
+        "template_version": {
+          "minLength": 1,
+          "title": "Template Version",
+          "type": "string"
+        },
+        "version": {
+          "exclusiveMinimum": 0,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "author_id",
+        "conference_id",
+        "selection",
+        "template_version",
+        "version"
+      ],
+      "title": "Report",
+      "type": "object"
+    },
+    "ReportSelection": {
+      "additionalProperties": false,
+      "description": "talk_ids — итоговый список докладов; days и section_ids хранят выбор пользователя.",
+      "properties": {
+        "days": {
+          "items": {
+            "format": "date",
+            "type": "string"
+          },
+          "title": "Days",
+          "type": "array"
+        },
+        "section_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Section Ids",
+          "type": "array"
+        },
+        "talk_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Talk Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "days",
+        "section_ids",
+        "talk_ids"
+      ],
+      "title": "ReportSelection",
+      "type": "object"
+    },
+    "Section": {
+      "additionalProperties": false,
+      "description": "Секция. Дата — значение по умолчанию для её докладов.",
+      "properties": {
+        "conference_id": {
+          "format": "uuid",
+          "title": "Conference Id",
+          "type": "string"
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Date"
+        },
+        "hall": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Hall"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "order": {
+          "exclusiveMinimum": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "conference_id",
+        "title",
+        "date",
+        "hall",
+        "order"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "Talk": {
+      "additionalProperties": false,
+      "description": "Доклад реестра. Название и докладчики в справку идут отсюда, а не из ответа модели.",
+      "properties": {
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Date"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "match_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Match Confidence"
+        },
+        "order": {
+          "exclusiveMinimum": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "participants": {
+          "items": {
+            "$ref": "#/$defs/TalkParticipant"
+          },
+          "title": "Participants",
+          "type": "array"
+        },
+        "section_id": {
+          "format": "uuid",
+          "title": "Section Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/TalkStatus"
+        },
+        "talk_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TalkType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Title"
+        },
+        "version": {
+          "exclusiveMinimum": 0,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "section_id",
+        "order",
+        "title",
+        "date",
+        "talk_type",
+        "status",
+        "match_confidence",
+        "participants",
+        "version"
+      ],
+      "title": "Talk",
+      "type": "object"
+    },
+    "TalkParticipant": {
+      "additionalProperties": false,
+      "properties": {
+        "order": {
+          "exclusiveMinimum": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "person_id": {
+          "format": "uuid",
+          "title": "Person Id",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/PersonRole"
+        }
+      },
+      "required": [
+        "person_id",
+        "role",
+        "order"
+      ],
+      "title": "TalkParticipant",
+      "type": "object"
+    },
+    "TalkStatus": {
+      "enum": [
+        "draft",
+        "matched",
+        "processed",
+        "reviewed",
+        "stale",
+        "not_held",
+        "insufficient_data"
+      ],
+      "title": "TalkStatus",
+      "type": "string"
+    },
+    "TalkType": {
+      "enum": [
+        "исследовательский",
+        "обзорный",
+        "прикладной",
+        "иное"
+      ],
+      "title": "TalkType",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Вход задачи report (ADR-013): данные конференции на момент запроса сборки.\nСводки выбранных докладов приходят отдельными входами SummaryArtifact.",
+  "properties": {
+    "conference": {
+      "$ref": "#/$defs/Conference"
+    },
+    "people": {
+      "items": {
+        "$ref": "#/$defs/Person"
+      },
+      "title": "People",
+      "type": "array"
+    },
+    "report": {
+      "$ref": "#/$defs/Report"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/Section"
+      },
+      "title": "Sections",
+      "type": "array"
+    },
+    "talks": {
+      "items": {
+        "$ref": "#/$defs/Talk"
+      },
+      "title": "Talks",
+      "type": "array"
+    },
+    "unreviewed_confirmed": {
+      "title": "Unreviewed Confirmed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "report",
+    "conference",
+    "sections",
+    "talks",
+    "people",
+    "unreviewed_confirmed"
+  ],
+  "title": "ReportRequest",
+  "type": "object",
+  "version": "0.4.0"
+}

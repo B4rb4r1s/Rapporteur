@@ -16,7 +16,10 @@ COPY contracts/pyproject.toml contracts/VERSION /repo/contracts/
 COPY contracts/src /repo/contracts/src
 COPY pipeline/pyproject.toml /repo/pipeline/
 COPY pipeline/src /repo/pipeline/src
-COPY pipeline/graph.yaml /repo/pipeline/graph.yaml
+COPY pipeline/graph.yaml pipeline/profiles.yaml /repo/pipeline/
+# Промпты и бланк ищутся от корня репозитория: этапы сводки и справки (ADR-013).
+COPY prompts /repo/prompts
+COPY templates /repo/templates
 WORKDIR /repo/workers
 COPY workers/pyproject.toml workers/uv.lock ./
 COPY workers/src ./src
