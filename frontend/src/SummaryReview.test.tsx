@@ -12,6 +12,7 @@ afterEach(() => {
 // кодовых точках, которыми считает span сервер, — одну.
 const slideText = '𝔼 Результаты: задержка снизилась на 23 %.';
 const view: SummaryView = {
+  talk_title: 'Кэширование',
   talk_status: 'processed',
   pack: {
     fragments: [{

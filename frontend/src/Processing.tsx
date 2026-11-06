@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { request } from './Materials';
+import { request, statusTone } from './Materials';
 
 type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'retry_wait';
 export type TalkProgress = {
@@ -36,6 +36,14 @@ const jobStatuses: Record<JobStatus, string> = {
   failed: 'ошибка',
   cancelled: 'отменено',
   retry_wait: 'повтор',
+};
+const jobTone: Record<JobStatus, string> = {
+  queued: '',
+  running: 'info',
+  succeeded: 'ok',
+  failed: 'bad',
+  cancelled: '',
+  retry_wait: 'warn',
 };
 const steps = [
   ['pack', 'Пакет'],
@@ -82,21 +90,37 @@ export function Processing(
 
   const ready = progress?.talks.filter((talk) => talk.summary_number !== null).length ?? 0;
   return (
-    <section aria-labelledby="processing-title">
+    <section className="card" aria-labelledby="processing-title">
       <h2 id="processing-title">Обработка</h2>
       {error && <p role="alert">{error}</p>}
       {progress && !progress.processing_started && (
-        <p>Обработка ещё не запущена: подтвердите привязки на вкладке «Материалы».</p>
+        <p className="notice">Обработка ещё не запущена: подтвердите привязки на вкладке «Материалы».</p>
+      )}
+      {progress?.processing_started && !progress.talks.length && (
+        <p className="notice">
+          В реестре нет докладов, поэтому сводок не будет. На вкладке «Материалы» добавьте доклады
+          или загрузите папку, где у каждого доклада своя подпапка, и подтвердите привязки.
+        </p>
+      )}
+      {progress?.processing_started && !!progress.talks.length
+        && progress.talks.every((talk) => talk.status === 'draft' || talk.status === 'insufficient_data') && (
+        <p className="notice">Ни к одному докладу не привязаны материалы: подтвердите привязки на вкладке «Материалы».</p>
       )}
       {progress && (
         <>
-          <p>
-            {fileStages
-              .filter(([stage]) => progress.stages[stage])
-              .map(([stage, label]) => `${label}: ${counts(progress.stages[stage])}`)
-              .join(' · ') || 'Задач пока нет.'}
-          </p>
-          <p>Сводки готовы у {ready} из {progress.talks.length} докладов. Обновляется каждые 5 с.</p>
+          <div className="kv">
+            {fileStages.filter(([stage]) => progress.stages[stage]).map(([stage, label]) => (
+              <div key={stage}><b>{label}</b>{counts(progress.stages[stage])}</div>
+            ))}
+            <div><b>Сводки</b>{ready} из {progress.talks.length}</div>
+          </div>
+          <div className="row">
+            <div className="progressbar" aria-hidden="true">
+              <span style={{ width: `${progress.talks.length ? (100 * ready) / progress.talks.length : 0}%` }} />
+            </div>
+            <small>Сводки готовы у {ready} из {progress.talks.length} докладов. Обновляется каждые 5 с.</small>
+          </div>
+          <div className="table-wrap">
           <table>
             <thead>
               <tr>
@@ -111,13 +135,23 @@ export function Processing(
                 <tr key={talk.id}>
                   <th scope="row">{talk.section} · {talk.order}. {talk.title ?? 'Без названия'}</th>
                   <td>
-                    {talkStatuses[talk.status] ?? talk.status}
+                    <span className={`pill ${statusTone[talk.status] ?? ''}`}>{talkStatuses[talk.status] ?? talk.status}</span>
                     {talk.summary_status === 'needs_attention' && <><br /><small>Сводка требует внимания</small></>}
                     {talk.error_code && <><br /><small>Ошибка: {talk.error_code}</small></>}
                   </td>
-                  {steps.map(([stage]) => (
-                    <td key={stage}>{talk.stages[stage] ? jobStatuses[talk.stages[stage]] : '—'}</td>
-                  ))}
+                  {steps.map(([stage]) => {
+                    const job = talk.stages[stage];
+                    return (
+                      <td key={stage}>
+                        {job ? (
+                          <span className={`pill ${jobTone[job]}`}>
+                            {job === 'running' && <span className="spinner" aria-hidden="true" />}
+                            {jobStatuses[job]}
+                          </span>
+                        ) : <span className="muted">—</span>}
+                      </td>
+                    );
+                  })}
                   <td>
                     <button disabled={talk.summary_number === null} onClick={() => onOpen(talk)}>
                       Открыть сводку
@@ -127,6 +161,7 @@ export function Processing(
               ))}
             </tbody>
           </table>
+          </div>
         </>
       )}
     </section>

@@ -69,6 +69,30 @@ def test_title_and_duplicate_presentation_format(materials_client: TestClient) -
     assert pdf_version["alternate_of"] == pptx["source"]["id"]
 
 
+def test_folders_named_by_speaker_become_talks_in_upload_order(
+    materials_client: TestClient,
+) -> None:
+    """Папка конференции вида «Иванов/доклад.pptx», как в data/: номера в имени нет."""
+    client = materials_client
+    base = conference(client)
+    presentation = importlib.import_module("pptx").Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[0])
+    slide.shapes.title.text = "Точность моделей"
+    buffer = io.BytesIO()
+    presentation.save(buffer)
+    assert upload(client, base, "Иванов/доклад.pptx", buffer.getvalue()).status_code == 201
+    assert upload(client, base, "Петров/слайды.pdf", pdf()).status_code == 201
+
+    snapshot = client.get(f"{base}/materials").json()
+    talks = {talk["order"]: talk for talk in snapshot["talks"]}
+    assert sorted(talks) == [1, 2]
+    assert talks[1]["title"] == "Точность моделей" and talks[1]["section"] == "Основная секция"
+    assert talks[2]["title"] == "Петров"
+    suggested = {item["relative_path"]: item["suggested_talk_id"] for item in snapshot["files"]}
+    assert suggested["Иванов/доклад.pptx"] == talks[1]["id"]
+    assert suggested["Петров/слайды.pdf"] == talks[2]["id"]
+
+
 def test_content_deduplicated_on_disk_and_per_conference(
     materials_client: TestClient, tmp_path: Path
 ) -> None:

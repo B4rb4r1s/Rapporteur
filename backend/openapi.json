@@ -3473,6 +3473,64 @@
         }
       }
     },
+    "/api/v1/system": {
+      "get": {
+        "summary": "System",
+        "operationId": "system_api_v1_system_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -4933,6 +4991,39 @@
         ],
         "title": "ProcessingAccepted"
       },
+      "ProfileInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "reasoning": {
+            "type": "boolean",
+            "title": "Reasoning"
+          },
+          "prompt_version": {
+            "type": "string",
+            "title": "Prompt Version"
+          },
+          "default": {
+            "type": "boolean",
+            "title": "Default"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "model",
+          "reasoning",
+          "prompt_version",
+          "default"
+        ],
+        "title": "ProfileInfo"
+      },
       "Progress": {
         "properties": {
           "processing_started": {
@@ -5874,6 +5965,56 @@
         ],
         "title": "SummaryStatus"
       },
+      "SystemInfo": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "migration": {
+            "type": "string",
+            "title": "Migration"
+          },
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileInfo"
+            },
+            "type": "array",
+            "title": "Profiles"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateInfo"
+            },
+            "type": "array",
+            "title": "Templates"
+          },
+          "queue": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Queue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "mode",
+          "migration",
+          "profiles",
+          "templates",
+          "queue"
+        ],
+        "title": "SystemInfo"
+      },
       "Talk": {
         "properties": {
           "id": {
@@ -6136,6 +6277,17 @@
           "pack": {
             "$ref": "#/components/schemas/TalkFragmentPack"
           },
+          "talk_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talk Title"
+          },
           "talk_status": {
             "$ref": "#/components/schemas/TalkStatus"
           }
@@ -6144,6 +6296,7 @@
         "required": [
           "summary",
           "pack",
+          "talk_title",
           "talk_status"
         ],
         "title": "TalkSummaryView"
@@ -6228,6 +6381,24 @@
         "additionalProperties": false,
         "type": "object",
         "title": "TalkWrite"
+      },
+      "TemplateInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "version"
+        ],
+        "title": "TemplateInfo"
       },
       "TextOrigin": {
         "type": "string",

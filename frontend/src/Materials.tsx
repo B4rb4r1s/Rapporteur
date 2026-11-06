@@ -35,6 +35,14 @@ const kinds: Record<Material['source']['kind'], string> = {
   notes: 'Заметки',
   program: 'Программа',
 };
+// Цвет статуса доклада: зелёный — проверен, жёлтый — ждёт человека, синий — в работе.
+export const statusTone: Record<string, string> = {
+  matched: 'info',
+  processed: 'warn',
+  reviewed: 'ok',
+  stale: 'warn',
+  insufficient_data: 'bad',
+};
 const statuses: Record<string, string> = {
   draft: 'Черновик',
   matched: 'Материалы привязаны',
@@ -67,7 +75,9 @@ function selectionFor(file: Material) {
   return file.suggested_talk_id ?? '';
 }
 
-export function Materials({ conferenceId }: { conferenceId: string }) {
+export function Materials(
+  { conferenceId, onStarted }: { conferenceId: string; onStarted?: () => void },
+) {
   const base = `/api/v1/conferences/${conferenceId}`;
   const [snapshot, setSnapshot] = useState<{ review: Review; etag: string }>();
   const [choices, setChoices] = useState<Record<string, string>>({});
@@ -178,6 +188,7 @@ export function Materials({ conferenceId }: { conferenceId: string }) {
         ...previous, review: { ...previous.review, processing_started: true },
       }));
       setStatus('Обработка запрошена.');
+      onStarted?.();
     } catch (reason) {
       setErrors([(reason as Error).message]);
     } finally {
@@ -222,12 +233,25 @@ export function Materials({ conferenceId }: { conferenceId: string }) {
   const files = snapshot?.review.files ?? [];
   const talks = snapshot?.review.talks ?? [];
   const sections = snapshot?.review.sections ?? [];
+  const materials = files.filter((file) => file.source.kind !== 'program');
+  const unconfirmed = materials.some((file) => !file.binding.confirmed);
+  const bound = materials.filter((file) => file.binding.confirmed && file.binding.talk_id).length;
+  let warning = '';
+  if (materials.length && !talks.length) {
+    warning = 'Реестр докладов пуст. Загрузите папку, где у каждого доклада своя подпапка '
+      + '(например, Иванов/ или 01_Иванов/), или добавьте доклады вручную. Без докладов '
+      + 'обработка разберёт файлы, но сводок не будет.';
+  } else if (materials.length && unconfirmed) {
+    warning = 'Проверьте и подтвердите привязки: пока они не подтверждены, шаги сводки ждут.';
+  } else if (materials.length && !bound) {
+    warning = 'Ни один файл не привязан к докладу: сводок не будет.';
+  }
   return (
-    <section aria-labelledby="materials-title" aria-busy={!!busy}>
+    <section className="card" aria-labelledby="materials-title" aria-busy={!!busy}>
       <h2 id="materials-title">Материалы и привязки</h2>
-      <p>Для создания реестра из папки используйте подпапки вида 01_Иванов.</p>
-      <p>
-        <label>Папка конференции{' '}
+      <p className="muted">Для создания реестра из папки используйте подпапки вида 01_Иванов.</p>
+      <div className="fields">
+        <label className="field"><span>Папка конференции</span>
           <input
             type="file"
             ref={(input) => { if (input) input.setAttribute('webkitdirectory', ''); }}
@@ -235,33 +259,31 @@ export function Materials({ conferenceId }: { conferenceId: string }) {
             onChange={(event) => selectFiles(event.currentTarget)}
           />
         </label>
-      </p>
-      <p>
-        <label>Отдельные файлы{' '}
+        <label className="field"><span>Отдельные файлы</span>
           <input type="file" multiple disabled={!!busy} onChange={(event) => selectFiles(event.currentTarget)} />
         </label>
-      </p>
+      </div>
       <p role="status">{busy || status}</p>
       {!!errors.length && <ul role="alert">{errors.map((message, index) => <li key={index}>{message}</li>)}</ul>}
       {snapshot && (
-        <form onSubmit={(event) => { event.preventDefault(); void addTalk(); }}>
-          <label>
-            Название доклада{' '}
+        <form className="row" onSubmit={(event) => { event.preventDefault(); void addTalk(); }}>
+          <label className="field">
+            <span>Название доклада</span>
             <input value={talkTitle} onChange={(event) => setTalkTitle(event.target.value)} disabled={!!busy} required />
-          </label>{' '}
+          </label>
           {sections.length > 1 && (
-            <label>
-              Секция{' '}
+            <label className="field">
+              <span>Секция</span>
               <select value={sectionId || sections[0].id} disabled={!!busy} onChange={(event) => setSectionId(event.target.value)}>
                 {sections.map(({ id, title }) => <option key={id} value={id}>{title}</option>)}
               </select>{' '}
             </label>
           )}
-          <button disabled={!!busy || !talkTitle.trim()}>Добавить доклад</button>
+          <button disabled={!!busy || !talkTitle.trim()} style={{ alignSelf: 'end' }}>Добавить доклад</button>
         </form>
       )}
       {files.length > 0 && (
-        <>
+        <div className="table-wrap">
           <table>
             <thead><tr><th scope="col">Файл</th><th scope="col">Подсказка</th><th scope="col">Доклад</th></tr></thead>
             <tbody>
@@ -303,31 +325,40 @@ export function Materials({ conferenceId }: { conferenceId: string }) {
                           </option>
                         ))}
                       </select>
-                      {file.binding.confirmed && !(file.source.id in choices) && <small> Подтверждено</small>}
+                      {file.binding.confirmed && !(file.source.id in choices) && <span className="pill ok">Подтверждено</span>}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </>
+        </div>
       )}
       {(files.length > 0 || talks.length > 0) && (
-        <p><button disabled={!!busy} onClick={() => void save()}>Подтвердить привязки</button></p>
+        <p><button className="primary" disabled={!!busy} onClick={() => void save()}>Подтвердить привязки</button></p>
       )}
       {!!talks.length && (
         <>
           <h3>Реестр докладов</h3>
           <ul>{talks.map((talk) => (
-            <li key={talk.id}>{talk.section} · {talk.order}. {talk.title ?? 'Без названия'} — {statuses[talk.status]}</li>
+            <li key={talk.id}>
+              {talk.section} · {talk.order}. {talk.title ?? 'Без названия'}{' '}
+              <span className={`pill ${statusTone[talk.status] ?? ''}`}>{statuses[talk.status]}</span>
+            </li>
           ))}</ul>
         </>
       )}
       {snapshot && <p><a href={`${base}/conference.yaml`}>Скачать conference.yaml</a></p>}
+      {warning && <p className="notice">{warning}</p>}
       {snapshot?.review.processing_started
-        ? <p><a href={`/api/v1/jobs?conference_id=${conferenceId}`}>Задачи обработки (JSON)</a></p>
+        ? (
+          <p className="row">
+            <span className="pill ok">Обработка запущена</span>
+            {onStarted && <button onClick={onStarted}>Открыть ход обработки</button>}
+          </p>
+        )
         : files.length > 0 && (
-          <p><button disabled={!!busy} onClick={() => void startProcessing()}>Запустить обработку</button></p>
+          <p><button className="primary" disabled={!!busy} onClick={() => void startProcessing()}>Запустить обработку</button></p>
         )}
       <button disabled={!!busy} onClick={() => {
         setErrors([]);

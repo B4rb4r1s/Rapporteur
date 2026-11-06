@@ -227,3 +227,38 @@ def test_report_is_built_from_current_summaries(
     absent = client.get(f"/api/v1/report-versions/{versions[0]['id']}/files/pdf")
     assert absent.status_code == 404
     assert UUID(versions[0]["id"]) == UUID(accepted.json()["job_id"])
+
+
+def test_deleting_a_conference_cancels_its_jobs(
+    client: TestClient, database: Engine, queue: Queue, storage: DirectoryStorage
+) -> None:
+    conference = client.post("/api/v1/conferences", json={"title": "Удаляемая"})
+    base = f"/api/v1/conferences/{conference.json()['id']}"
+    client.post(
+        f"{base}/materials",
+        params={"path": "Иванов/доклад.pptx"},
+        headers={"Content-Type": "application/octet-stream"},
+        content=presentation(),
+    )
+    assert client.post(f"{base}/processing").status_code == 202
+    advance_started(database, queue, "dev", load_graph(), storage)
+    (job,) = queue.for_conference(UUID(conference.json()["id"]), "dev")
+    assert job.status.value == "queued"
+
+    deleted = client.delete(base, headers={"If-Match": client.get(base).headers["etag"]})
+
+    assert deleted.status_code == 204
+    cancelled = queue.get(job.id)
+    assert cancelled is not None and cancelled.status.value == "cancelled"
+    assert client.get(base).status_code == 404
+
+
+def test_system_shows_profiles_templates_and_queue(client: TestClient, queue: Queue) -> None:
+    info = client.get("/api/v1/system")
+
+    assert info.status_code == 200, info.text
+    body = info.json()
+    assert body["mode"] == "dev" and body["migration"] == "0004_summaries"
+    assert [item["name"] for item in body["profiles"] if item["default"]] == ["local"]
+    assert {"name": "starter", "version": "starter-1"} in body["templates"]
+    assert body["queue"] == {}

@@ -120,7 +120,20 @@ def update_conference(
 
 @router.delete("/conferences/{conference_id}", status_code=204)
 def delete_conference(request: Request, conference_id: UUID, version: Version) -> Response:
-    return delete_one(request, t.conferences, conference_id, version)
+    with engine(request).begin() as conn:
+        store.delete(conn, t.conferences, conference_id, version)
+        # Задачи удалённой конференции не должны занимать воркеры, в том числе модель.
+        if conn.scalar(sa.text("SELECT to_regclass('rapporteur_queue.jobs')")) is not None:
+            conn.execute(
+                sa.text(
+                    "UPDATE rapporteur_queue.jobs SET status = CASE WHEN status = 'running' "
+                    "THEN 'cancel_requested' ELSE 'cancelled' END "
+                    "WHERE inputs->>'conference_id' = :id "
+                    "AND status IN ('queued', 'retry_wait', 'running')"
+                ),
+                {"id": str(conference_id)},
+            )
+    return Response(status_code=204)
 
 
 @router.post("/conferences/{conference_id}/sections", response_model=Section, status_code=201)
