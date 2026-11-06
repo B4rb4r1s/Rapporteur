@@ -1,0 +1,138 @@
+/* Оформление в духе AutoRefer Portal: один файл стилей без внешних шрифтов и CDN (spec §2).
+   Светлая и тёмная тема — через color-scheme и системные цвета, акценты — переменные. */
+
+:root {
+  color-scheme: light dark;
+  --ok: #2e9e44;
+  --bad: #c9403a;
+  --warn: #c98a1e;
+  --info: #3b7bd4;
+  --accent: #3b7bd4;
+  --mut: #8a8f98;
+  --border: #88888855;
+  --pill-bg: #8888881a;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  color: CanvasText;
+  background: Canvas;
+}
+a { color: var(--accent); }
+h1 { font-size: 1.3rem; margin: 0; }
+h2 { font-size: 1.05rem; margin: 0 0 .8rem; }
+h3 {
+  font-size: .8rem; margin: 1.2rem 0 .5rem; color: var(--mut);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+small, .muted { color: var(--mut); }
+
+/* ── Шапка и разделы ──────────────────────────────────────────────── */
+.app-header {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+}
+.app-header .tagline { color: var(--mut); font-size: .85rem; }
+.app-header nav { display: flex; gap: 1.1rem; margin-left: auto; }
+.app-header nav button {
+  padding: .2rem 0; border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  background: none; color: var(--accent);
+}
+.app-header nav button[aria-current='page'] { border-color: var(--accent); color: CanvasText; }
+main { max-width: 72rem; margin: 0 auto; padding: 1.5rem; }
+
+/* ── Карточки и формы ─────────────────────────────────────────────── */
+.card {
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 1.1rem 1.2rem; margin-bottom: 1.2rem;
+}
+.card > :last-child { margin-bottom: 0; }
+.row { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }
+.row + .row { margin-top: .7rem; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .8rem 1.1rem; }
+.field { display: block; font-size: .85rem; }
+.field > span { display: block; color: var(--mut); margin-bottom: .2rem; }
+input[type=text], input[type=date], input:not([type]), select, textarea {
+  width: 100%; padding: .4rem .5rem; font: inherit; color: CanvasText; background: Canvas;
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.row select, .row input:not([type=checkbox]) { width: auto; min-width: 14rem; }
+textarea { resize: vertical; min-height: 3rem; }
+input[type=file] { font: inherit; font-size: .85rem; }
+fieldset { border: 0; margin: 0; padding: 0; }
+legend { padding: 0; margin-bottom: .6rem; font-weight: 600; }
+.check { display: inline-flex; gap: .45rem; align-items: center; font-size: .9rem; }
+
+/* ── Кнопки ───────────────────────────────────────────────────────── */
+button {
+  font: inherit; padding: .4rem .8rem; cursor: pointer; color: CanvasText;
+  background: var(--pill-bg); border: 1px solid var(--border); border-radius: 6px;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+button.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+button.link { padding: 0; border: 0; background: none; color: var(--accent); }
+.chip {
+  padding: .05rem .45rem; margin-left: .25rem; font-size: .75rem; font-weight: 600;
+  vertical-align: .1em; border-radius: 999px;
+}
+.chip[aria-pressed='true'] { color: #fff; background: var(--accent); border-color: var(--accent); }
+
+/* ── Статусы ──────────────────────────────────────────────────────── */
+.pill {
+  display: inline-block; padding: .1rem .55rem; font-size: .78rem; font-weight: 600;
+  white-space: nowrap; background: var(--pill-bg); border-radius: 999px;
+}
+.pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 18%, transparent); }
+.pill.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 18%, transparent); }
+.pill.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 18%, transparent); }
+.pill.info { color: var(--info); background: color-mix(in srgb, var(--info) 18%, transparent); }
+.spinner {
+  display: inline-block; width: .7rem; height: .7rem; margin-right: .3rem; vertical-align: -.05em;
+  border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.progressbar {
+  flex: 1; min-width: 8rem; max-width: 20rem; height: .5rem; overflow: hidden;
+  background: var(--pill-bg); border-radius: 999px;
+}
+.progressbar > span { display: block; height: 100%; background: var(--ok); }
+[role='alert'] {
+  padding: .5rem .8rem; color: var(--bad);
+  border: 1px solid color-mix(in srgb, var(--bad) 45%, transparent); border-radius: 6px;
+}
+[role='alert'] li { margin-left: 1rem; }
+[role='status']:empty { display: none; }
+[role='status'] { color: var(--ok); font-size: .9rem; }
+
+/* ── Таблицы ──────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th, td { padding: .45rem .5rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+thead th { color: var(--mut); font-weight: 600; }
+tbody th { font-weight: 500; }
+.table-wrap { overflow-x: auto; }
+
+/* ── Сводка и источники ───────────────────────────────────────────── */
+.review { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 1.2rem; align-items: start; }
+@media (max-width: 60rem) { .review { grid-template-columns: 1fr; } }
+.summary-text { margin: .4rem 0; padding: .2rem 0 .2rem .9rem; border-left: 3px solid var(--accent); }
+.summary-text li { margin-bottom: .45rem; }
+.summary-text textarea { margin-bottom: .15rem; }
+.claim-card { position: sticky; top: 1rem; }
+.claim-card figure { margin: .8rem 0 0; }
+.claim-card figcaption { font-size: .8rem; color: var(--mut); }
+.claim-card blockquote {
+  margin: .3rem 0 .5rem; padding: .5rem .7rem; font-size: .9rem;
+  background: var(--pill-bg); border-radius: 6px;
+}
+.claim-card img { display: block; max-width: 100%; border: 1px solid var(--border); border-radius: 6px; }
+mark { color: inherit; background: color-mix(in srgb, var(--warn) 40%, transparent); border-radius: 2px; }
+.kv { display: flex; gap: 1.6rem; flex-wrap: wrap; margin: .3rem 0 .8rem; }
+.kv div { font-size: .92rem; }
+.kv b { display: block; font-size: .75rem; font-weight: normal; color: var(--mut); }
+.files a { display: inline-block; margin-right: .4rem; }
+.versions li { margin-bottom: .4rem; }

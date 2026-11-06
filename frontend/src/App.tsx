@@ -8,33 +8,14 @@ import { SummaryReview } from './SummaryReview';
 type Tab = 'materials' | 'processing' | 'report';
 const tabs: [Tab, string][] = [['materials', 'Материалы'], ['processing', 'Обработка'], ['report', 'Справка']];
 
-function Workspace({ conferenceId }: { conferenceId: string }) {
-  const [tab, setTab] = useState<Tab>('materials');
-  const [talk, setTalk] = useState<TalkProgress>();
-  return (
-    <>
-      <nav aria-label="Разделы конференции">
-        {tabs.map(([value, label]) => (
-          <button key={value} aria-current={tab === value ? 'page' : undefined} onClick={() => { setTab(value); setTalk(undefined); }}>
-            {label}
-          </button>
-        ))}
-      </nav>
-      {tab === 'materials' && <Materials conferenceId={conferenceId} />}
-      {tab === 'processing' && (talk
-        ? <SummaryReview talkId={talk.id} title={talk.title ?? 'Доклад без названия'} onClose={() => setTalk(undefined)} />
-        : <Processing conferenceId={conferenceId} onOpen={setTalk} />)}
-      {tab === 'report' && <ReportPanel conferenceId={conferenceId} />}
-    </>
-  );
-}
-
 export function App() {
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [selected, setSelected] = useState('');
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<Tab>('materials');
+  const [talk, setTalk] = useState<TalkProgress>();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -70,7 +51,7 @@ export function App() {
       });
       const conference: Conference = await response.json();
       setConferences((previous) => [...previous.filter(({ id }) => id !== conference.id), conference]);
-      setSelected(conference.id);
+      choose(conference.id);
       setTitle('');
     } catch (reason) {
       setError((reason as Error).message);
@@ -79,28 +60,59 @@ export function App() {
     }
   }
 
+  function choose(conferenceId: string) {
+    setSelected(conferenceId);
+    setTab('materials');
+    setTalk(undefined);
+  }
+
   return (
-    <main>
-      <h1>Репортёр</h1>
-      <p>Справки по материалам научных конференций.</p>
-      <label>
-        Конференция{' '}
-        <select value={selected} onChange={(event) => setSelected(event.target.value)}>
-          <option value="">Выберите конференцию</option>
-          {conferences.map((conference) => (
-            <option key={conference.id} value={conference.id}>{conference.title ?? 'Без названия'}</option>
-          ))}
-        </select>
-      </label>
-      <form onSubmit={(event) => { event.preventDefault(); void createConference(); }}>
-        <label>
-          Название новой конференции{' '}
-          <input value={title} onChange={(event) => setTitle(event.target.value)} required />
-        </label>{' '}
-        <button disabled={saving || !title.trim()}>Создать</button>
-      </form>
-      {error && <p role="alert">{error}</p>}
-      {selected && <Workspace key={selected} conferenceId={selected} />}
-    </main>
+    <>
+      <header className="app-header">
+        <h1>Репортёр</h1>
+        <span className="tagline">Справки по материалам научных конференций.</span>
+        {selected && (
+          <nav aria-label="Разделы конференции">
+            {tabs.map(([value, label]) => (
+              <button
+                key={value}
+                aria-current={tab === value ? 'page' : undefined}
+                onClick={() => { setTab(value); setTalk(undefined); }}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        )}
+      </header>
+      <main>
+        <div className="card">
+          <div className="row">
+            <label className="field">
+              <span>Конференция</span>
+              <select value={selected} onChange={(event) => choose(event.target.value)}>
+                <option value="">Выберите конференцию</option>
+                {conferences.map((conference) => (
+                  <option key={conference.id} value={conference.id}>{conference.title ?? 'Без названия'}</option>
+                ))}
+              </select>
+            </label>
+            <form className="row" onSubmit={(event) => { event.preventDefault(); void createConference(); }}>
+              <label className="field">
+                <span>Название новой конференции</span>
+                <input value={title} onChange={(event) => setTitle(event.target.value)} required />
+              </label>
+              <button disabled={saving || !title.trim()} style={{ alignSelf: 'end' }}>Создать</button>
+            </form>
+          </div>
+          {error && <p role="alert">{error}</p>}
+        </div>
+        {selected && tab === 'materials' && <Materials key={selected} conferenceId={selected} />}
+        {selected && tab === 'processing' && (talk
+          ? <SummaryReview talkId={talk.id} title={talk.title ?? 'Доклад без названия'} onClose={() => setTalk(undefined)} />
+          : <Processing key={selected} conferenceId={selected} onOpen={setTalk} />)}
+        {selected && tab === 'report' && <ReportPanel key={selected} conferenceId={selected} />}
+      </main>
+    </>
   );
 }

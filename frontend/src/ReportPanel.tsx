@@ -147,56 +147,76 @@ export function ReportPanel({ conferenceId }: { conferenceId: string }) {
 
   return (
     <section aria-labelledby="report-title" aria-busy={!!busy || !!waiting}>
-      <h2 id="report-title">Справка</h2>
-      <p role="status">{busy || status}</p>
-      {error && <p role="alert">{error}</p>}
-      {conference && (
-        <form onSubmit={(event) => { event.preventDefault(); saveDates(); }}>
-          <fieldset>
-            <legend>Сведения для справки</legend>
-            <label>Начало <input type="date" value={dates.start} onChange={(event) => setDates({ ...dates, start: event.target.value })} /></label>{' '}
-            <label>Окончание <input type="date" value={dates.end} onChange={(event) => setDates({ ...dates, end: event.target.value })} /></label>{' '}
-            <label>Место <input value={dates.place} placeholder="г. Москва" onChange={(event) => setDates({ ...dates, place: event.target.value })} /></label>{' '}
-            <button disabled={!!busy}>Сохранить</button>
-            {!conference.value.start_date && <p>Без дат в справке не будет периода проведения, сборка не пройдёт.</p>}
-          </fieldset>
-        </form>
-      )}
+      <div className="card">
+        <h2 id="report-title">Справка</h2>
+        <p role="status">{waiting && <span className="spinner" aria-hidden="true" />}{busy || status}</p>
+        {error && <p role="alert">{error}</p>}
+        {conference && (
+          <form onSubmit={(event) => { event.preventDefault(); saveDates(); }}>
+            <fieldset>
+              <legend>Сведения для справки</legend>
+              <div className="fields">
+                <label className="field"><span>Начало</span>
+                  <input type="date" value={dates.start} onChange={(event) => setDates({ ...dates, start: event.target.value })} />
+                </label>
+                <label className="field"><span>Окончание</span>
+                  <input type="date" value={dates.end} onChange={(event) => setDates({ ...dates, end: event.target.value })} />
+                </label>
+                <label className="field"><span>Место</span>
+                  <input value={dates.place} placeholder="г. Москва" onChange={(event) => setDates({ ...dates, place: event.target.value })} />
+                </label>
+                <button disabled={!!busy} style={{ alignSelf: 'end' }}>Сохранить</button>
+              </div>
+              {!conference.value.start_date && (
+                <p className="pill warn" style={{ marginTop: '.8rem' }}>
+                  Без дат в справке не будет периода проведения, сборка не пройдёт.
+                </p>
+              )}
+            </fieldset>
+          </form>
+        )}
+      </div>
       {report === null && (
-        <p>
-          <button disabled={!!busy || !talkIds.length} onClick={createReport}>Создать справку по всем докладам</button>
-        </p>
+        <div className="card">
+          <button className="primary" disabled={!!busy || !talkIds.length} onClick={createReport}>
+            Создать справку по всем докладам
+          </button>
+        </div>
       )}
       {report && (
-        <>
-          <p>В справке докладов: {report.selection.talk_ids.length}. Доклады без готовой сводки в неё не войдут.</p>
-          <p>
-            <label>
-              <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />{' '}
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Сборка</h3>
+          <p className="muted">
+            В справке докладов: {report.selection.talk_ids.length}. Доклады без готовой сводки в неё не войдут.
+          </p>
+          <div className="row">
+            <button className="primary" disabled={!!busy || !!waiting} onClick={build}>Собрать справку</button>
+            <label className="check">
+              <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />
               Собрать, даже если не все сводки проверены
             </label>
-          </p>
-          <p><button disabled={!!busy || !!waiting} onClick={build}>Собрать справку</button></p>
+          </div>
+          <h3>Версии</h3>
           {versions.length > 0 ? (
-            <>
-              <h3>Версии</h3>
-              <ul>
-                {versions.map((version) => (
-                  <li key={version.id}>
-                    Версия {version.number} от {new Date(version.created_at).toLocaleString('ru-RU')},
-                    докладов {version.variables.talks_count}:{' '}
-                    {version.files.map((file, index) => (
-                      <span key={file.format}>
-                        {index > 0 && ' · '}
-                        <a href={`/api/v1/report-versions/${version.id}/files/${file.format}`}>{formats[file.format]}</a>
-                      </span>
+            <ul className="versions">
+              {versions.map((version) => (
+                <li key={version.id}>
+                  <b>Версия {version.number}</b>{' '}
+                  <span className="muted">
+                    от {new Date(version.created_at).toLocaleString('ru-RU')}, докладов {version.variables.talks_count}
+                  </span>{' '}
+                  <span className="files">
+                    {version.files.map((file) => (
+                      <a key={file.format} className="pill info" href={`/api/v1/report-versions/${version.id}/files/${file.format}`}>
+                        {formats[file.format]}
+                      </a>
                     ))}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : <p>Собранных версий пока нет.</p>}
-        </>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="muted">Собранных версий пока нет.</p>}
+        </div>
       )}
     </section>
   );

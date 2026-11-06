@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { request } from './Materials';
+import { request, statusTone } from './Materials';
 import { talkStatuses } from './Processing';
 
 type Line = { text: string; claim_ids: string[] };
@@ -52,6 +52,12 @@ const claimStatuses: Record<ClaimStatus, string> = {
   verified: 'цитата найдена, не проверено человеком',
   needs_human: 'нужна проверка человеком',
   confirmed: 'подтверждено',
+};
+const claimTone: Record<ClaimStatus, string> = {
+  rejected: 'bad',
+  verified: 'info',
+  needs_human: 'warn',
+  confirmed: 'ok',
 };
 const rejections: Record<string, string> = {
   label_not_found: 'метки нет в материалах',
@@ -129,8 +135,8 @@ export function SummaryReview(
   if (!snapshot) {
     return (
       <section aria-label="Проверка сводки">
-        <p><button onClick={onClose}>К списку докладов</button></p>
-        {error ? <p role="alert">{error}</p> : <p>Загрузка сводки…</p>}
+        <p><button className="link" onClick={onClose}><span aria-hidden="true">← </span>К списку докладов</button></p>
+        {error ? <p role="alert">{error}</p> : <p className="muted"><span className="spinner" aria-hidden="true" />Загрузка сводки…</p>}
       </section>
     );
   }
@@ -199,6 +205,7 @@ export function SummaryReview(
         {line.claim_ids.map((key) => (
           <button
             key={key}
+            className="chip"
             aria-pressed={selected === key}
             title={claims.get(key)?.text}
             onClick={() => setSelected(selected === key ? '' : key)}
@@ -210,38 +217,47 @@ export function SummaryReview(
     );
   }
 
+  const lines = (kind: 'sentences' | 'conclusions') => summary[kind];
   return (
     <section aria-labelledby="summary-title" aria-busy={!!busy}>
-      <p><button onClick={onClose}>К списку докладов</button></p>
-      <h2 id="summary-title">{title}</h2>
-      <p>
-        Доклад: {talkStatuses[talkStatus] ?? talkStatus}. Версия сводки {summary.version}
-        {summary.edited_by ? ', правка человека' : `, ${summary.profile}`}.
-        {summary.status === 'needs_attention' && ' Сводка не прошла автоматические проверки: нужна правка.'}
-      </p>
-      <p role="status">{busy || status}</p>
-      {error && <p role="alert">{error}</p>}
+      <p><button className="link" onClick={onClose}><span aria-hidden="true">← </span>К списку докладов</button></p>
+      <div className="card">
+        <h2 id="summary-title">{title}</h2>
+        <div className="kv">
+          <div><b>Доклад</b><span className={`pill ${statusTone[talkStatus] ?? ''}`}>{talkStatuses[talkStatus] ?? talkStatus}</span></div>
+          <div><b>Версия сводки</b>{summary.version}</div>
+          <div><b>Автор версии</b>{summary.edited_by ? 'правка человека' : `модель, профиль ${summary.profile}`}</div>
+          {summary.status === 'needs_attention' && (
+            <div><b>Проверки</b><span className="pill warn">не пройдены, нужна правка</span></div>
+          )}
+        </div>
+        <p role="status">{busy || status}</p>
+        {error && <p role="alert">{error}</p>}
+      </div>
 
-      <h3>Сводка</h3>
-      {draft
-        ? <ol>{lineEditor('sentences', 'Предложение')}</ol>
-        : summary.sentences.length ? <ol>{summary.sentences.map(lineView)}</ol> : <p>Текста сводки нет.</p>}
-      <h3>Выводы</h3>
-      {draft
-        ? (draft.conclusions.length ? <ul>{lineEditor('conclusions', 'Вывод')}</ul> : <p>Выводов нет.</p>)
-        : summary.conclusions.length ? <ul>{summary.conclusions.map(lineView)}</ul> : <p>Выводов нет.</p>}
+      <div className="review">
+        <div className="card">
+          <h3>Сводка</h3>
+          {draft
+            ? <ol className="summary-text">{lineEditor('sentences', 'Предложение')}</ol>
+            : lines('sentences').length
+              ? <ol className="summary-text">{lines('sentences').map(lineView)}</ol>
+              : <p className="muted">Текста сводки нет.</p>}
+          <h3>Выводы</h3>
+          {draft
+            ? (draft.conclusions.length ? <ul className="summary-text">{lineEditor('conclusions', 'Вывод')}</ul> : <p className="muted">Выводов нет.</p>)
+            : lines('conclusions').length
+              ? <ul className="summary-text">{lines('conclusions').map(lineView)}</ul>
+              : <p className="muted">Выводов нет.</p>}
 
-      {draft && (
-        <>
-          <h3>Утверждения</h3>
-          <p>Правка текста утверждения снимает с него подтверждение.</p>
-          <ul>
-            {summary.claims.filter((item) => used.has(item.key)).map((item) => (
-              <li key={item.key}>
-                <label>
-                  {item.key} · {claimTypes[item.type] ?? item.type}{' '}
+          {draft && (
+            <>
+              <h3>Утверждения</h3>
+              <p className="muted">Правка текста утверждения снимает с него подтверждение.</p>
+              {summary.claims.filter((item) => used.has(item.key)).map((item) => (
+                <label key={item.key} className="field" style={{ marginBottom: '.5rem' }}>
+                  <span>{item.key} · {claimTypes[item.type] ?? item.type}</span>
                   <input
-                    size={80}
                     value={draft.claims[item.key]}
                     disabled={!!busy}
                     onChange={(event) => {
@@ -252,73 +268,79 @@ export function SummaryReview(
                     }}
                   />
                 </label>
-              </li>
+              ))}
+            </>
+          )}
+
+          <div className="row" style={{ marginTop: '1rem' }}>
+            {draft ? (
+              <>
+                <button className="primary" disabled={!!busy} onClick={save}>Сохранить правку</button>
+                <button disabled={!!busy} onClick={() => setDraft(undefined)}>Отменить</button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="primary"
+                  disabled={!!busy || talkStatus === 'reviewed' || !summary.sentences.length}
+                  onClick={() => void act('Подтверждение…', 'Сводка проверена.', () => request(`${url}/review`, {
+                    method: 'POST',
+                    headers: { 'If-Match': snapshot.etag },
+                  }))}
+                >
+                  Подтвердить проверку
+                </button>
+                <button disabled={!!busy} onClick={startEdit}>Править</button>
+                <button
+                  disabled={!!busy}
+                  onClick={() => void act('Обновление…', 'Загружена текущая версия.', () => request(url))}
+                >
+                  Обновить
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {claim ? (
+          <aside className="card claim-card" aria-label={`Утверждение ${claim.key}`}>
+            <h3 style={{ marginTop: 0 }}>{claim.key} · {claimTypes[claim.type] ?? claim.type}</h3>
+            <p>{claim.text}</p>
+            <p><span className={`pill ${claimTone[claim.status]}`}>{claimStatuses[claim.status]}</span></p>
+            {claim.evidence.map((item, index) => {
+              const fragment = fragments.get(item.fragment_revision_id);
+              return (
+                <figure key={index}>
+                  <figcaption>
+                    {item.label}{fragment && ` · ${place(fragment)}`}
+                  </figcaption>
+                  {fragment && <blockquote>{highlight(fragment.text, item.span)}</blockquote>}
+                  {fragment?.locator.kind === 'page' && fragment.kind.startsWith('slide') && (
+                    <img
+                      src={`/api/v1/source-files/${fragment.source_file_id}/slides/${fragment.locator.page_no}`}
+                      alt={`Слайд ${fragment.locator.page_no}`}
+                      loading="lazy"
+                    />
+                  )}
+                </figure>
+              );
+            })}
+            {claim.rejected_evidence.map((item, index) => (
+              <p key={`rejected-${index}`}>
+                <small>
+                  Не подтверждено ({rejections[item.reason] ?? item.reason}): {item.label}
+                  {byLabel.has(item.label) ? '' : ' (метки нет в пакете)'} — «{item.quote}»
+                </small>
+              </p>
             ))}
-          </ul>
-        </>
-      )}
-
-      <p>
-        {draft ? (
-          <>
-            <button disabled={!!busy} onClick={save}>Сохранить правку</button>{' '}
-            <button disabled={!!busy} onClick={() => setDraft(undefined)}>Отменить</button>
-          </>
+          </aside>
         ) : (
-          <>
-            <button disabled={!!busy} onClick={startEdit}>Править</button>{' '}
-            <button
-              disabled={!!busy || talkStatus === 'reviewed' || !summary.sentences.length}
-              onClick={() => void act('Подтверждение…', 'Сводка проверена.', () => request(`${url}/review`, {
-                method: 'POST',
-                headers: { 'If-Match': snapshot.etag },
-              }))}
-            >
-              Подтвердить проверку
-            </button>{' '}
-            <button
-              disabled={!!busy}
-              onClick={() => void act('Обновление…', 'Загружена текущая версия.', () => request(url))}
-            >
-              Обновить
-            </button>
-          </>
+          <div className="card claim-card muted">
+            Нажмите на ссылку утверждения рядом с предложением, например c1, чтобы увидеть
+            цитату из источника и слайд.
+          </div>
         )}
-      </p>
-
-      {claim && (
-        <aside aria-label={`Утверждение ${claim.key}`}>
-          <h3>{claim.key} · {claimTypes[claim.type] ?? claim.type}</h3>
-          <p>{claim.text}</p>
-          <p><small>{claimStatuses[claim.status]}</small></p>
-          {claim.evidence.map((item, index) => {
-            const fragment = fragments.get(item.fragment_revision_id);
-            return (
-              <figure key={index}>
-                <figcaption>
-                  {item.label}{fragment && ` · ${place(fragment)}`}
-                </figcaption>
-                {fragment && <blockquote>{highlight(fragment.text, item.span)}</blockquote>}
-                {fragment?.locator.kind === 'page' && fragment.kind.startsWith('slide') && (
-                  <img
-                    src={`/api/v1/source-files/${fragment.source_file_id}/slides/${fragment.locator.page_no}`}
-                    alt={`Слайд ${fragment.locator.page_no}`}
-                    style={{ maxWidth: '100%', border: '1px solid #ccc' }}
-                  />
-                )}
-              </figure>
-            );
-          })}
-          {claim.rejected_evidence.map((item, index) => (
-            <p key={`rejected-${index}`}>
-              <small>
-                Не подтверждено ({rejections[item.reason] ?? item.reason}): {item.label}
-                {byLabel.has(item.label) ? '' : ' (метки нет в пакете)'} — «{item.quote}»
-              </small>
-            </p>
-          ))}
-        </aside>
-      )}
+      </div>
     </section>
   );
 }
