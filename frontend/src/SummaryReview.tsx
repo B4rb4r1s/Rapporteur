@@ -37,7 +37,12 @@ type Summary = {
   edited_by: string | null;
   created_at: string;
 };
-export type SummaryView = { summary: Summary; pack: { fragments: Fragment[] }; talk_status: string };
+export type SummaryView = {
+  summary: Summary;
+  pack: { fragments: Fragment[] };
+  talk_title: string | null;
+  talk_status: string;
+};
 type Draft = { sentences: Line[]; conclusions: Line[]; claims: Record<string, string> };
 
 const claimTypes: Record<string, string> = {
@@ -90,7 +95,7 @@ function place(fragment: Fragment) {
 }
 
 export function SummaryReview(
-  { talkId, title, onClose }: { talkId: string; title: string; onClose: () => void },
+  { talkId, title, onClose }: { talkId: string; title?: string; onClose: () => void },
 ) {
   const url = `/api/v1/talks/${talkId}/summary`;
   const [snapshot, setSnapshot] = useState<{ view: SummaryView; etag: string }>();
@@ -222,7 +227,7 @@ export function SummaryReview(
     <section aria-labelledby="summary-title" aria-busy={!!busy}>
       <p><button className="link" onClick={onClose}><span aria-hidden="true">← </span>К списку докладов</button></p>
       <div className="card">
-        <h2 id="summary-title">{title}</h2>
+        <h2 id="summary-title">{title ?? snapshot.view.talk_title ?? 'Доклад без названия'}</h2>
         <div className="kv">
           <div><b>Доклад</b><span className={`pill ${statusTone[talkStatus] ?? ''}`}>{talkStatuses[talkStatus] ?? talkStatus}</span></div>
           <div><b>Версия сводки</b>{summary.version}</div>

@@ -1,117 +1,146 @@
 import { useEffect, useState } from 'react';
 
-import { Materials, request, type Conference } from './Materials';
-import { Processing, type TalkProgress } from './Processing';
+import { Home, type ConferenceItem } from './Home';
+import { Materials, request } from './Materials';
+import { Processing } from './Processing';
 import { ReportPanel } from './ReportPanel';
+import { Settings } from './Settings';
 import { SummaryReview } from './SummaryReview';
+import { applyTheme, effectiveTheme, storedTheme, type Theme } from './theme';
 
 type Tab = 'materials' | 'processing' | 'report';
+type Route =
+  | { page: 'home' }
+  | { page: 'settings' }
+  | { page: 'conference'; id: string; tab: Tab }
+  | { page: 'talk'; id: string; talkId: string };
+
 const tabs: [Tab, string][] = [['materials', 'Материалы'], ['processing', 'Обработка'], ['report', 'Справка']];
 
+/** Адрес страницы в hash: работают «назад», перезагрузка и ссылки на доклад. */
+export function parseRoute(hash: string): Route {
+  const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  if (parts[0] === 'settings') return { page: 'settings' };
+  if (parts[0] === 'c' && parts[1]) {
+    if (parts[2] === 'talk' && parts[3]) return { page: 'talk', id: parts[1], talkId: parts[3] };
+    const tab = tabs.find(([value]) => value === parts[2])?.[0] ?? 'materials';
+    return { page: 'conference', id: parts[1], tab };
+  }
+  return { page: 'home' };
+}
+
+export function routeHash(route: Route): string {
+  switch (route.page) {
+    case 'home': return '#/';
+    case 'settings': return '#/settings';
+    case 'conference': return `#/c/${encodeURIComponent(route.id)}/${route.tab}`;
+    case 'talk': return `#/c/${encodeURIComponent(route.id)}/talk/${encodeURIComponent(route.talkId)}`;
+  }
+}
+
+function go(route: Route) {
+  window.location.hash = routeHash(route);
+}
+
 export function App() {
-  const [conferences, setConferences] = useState<Conference[]>([]);
-  const [selected, setSelected] = useState('');
-  const [title, setTitle] = useState('');
+  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.hash));
+  const [theme, setTheme] = useState<Theme>(storedTheme);
+  const [conference, setConference] = useState<ConferenceItem>();
   const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<Tab>('materials');
-  const [talk, setTalk] = useState<TalkProgress>();
+  const conferenceId = route.page === 'conference' || route.page === 'talk' ? route.id : '';
 
   useEffect(() => {
-    const controller = new AbortController();
-    async function loadConferences() {
-      const items: Conference[] = [];
-      for (;;) {
-        const result = await request(`/api/v1/conferences?limit=100&offset=${items.length}`, {
-          signal: controller.signal,
-        });
-        const page: { items: Conference[]; page: { total: number } } = await result.json();
-        items.push(...page.items);
-        if (items.length >= page.page.total || !page.items.length) break;
-      }
-      setConferences((current) => [
-        ...items,
-        ...current.filter((conference) => !items.some(({ id }) => id === conference.id)),
-      ]);
-    }
-    void loadConferences().catch((reason: Error) => {
-      if (!controller.signal.aborted) setError(reason.message);
-    });
-    return () => controller.abort();
+    const update = () => setRoute(parseRoute(window.location.hash));
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
   }, []);
 
-  async function createConference() {
-    setSaving(true);
-    setError('');
-    try {
-      const response = await request('/api/v1/conferences', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim() }),
+  useEffect(() => applyTheme(theme), [theme]);
+
+  useEffect(() => {
+    if (!conferenceId) return;
+    const controller = new AbortController();
+    void request(`/api/v1/conferences/${conferenceId}`, { signal: controller.signal })
+      .then(async (response) => {
+        setConference(await response.json());
+        setError('');
+      })
+      .catch((reason: Error) => {
+        if (!controller.signal.aborted) setError(reason.message);
       });
-      const conference: Conference = await response.json();
-      setConferences((previous) => [...previous.filter(({ id }) => id !== conference.id), conference]);
-      choose(conference.id);
-      setTitle('');
-    } catch (reason) {
-      setError((reason as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }
+    return () => controller.abort();
+  }, [conferenceId]);
 
-  function choose(conferenceId: string) {
-    setSelected(conferenceId);
-    setTab('materials');
-    setTalk(undefined);
-  }
-
+  const dark = effectiveTheme(theme) === 'dark';
   return (
     <>
       <header className="app-header">
-        <h1>Репортёр</h1>
+        <h1><a href="#/">Репортёр</a></h1>
         <span className="tagline">Справки по материалам научных конференций.</span>
-        {selected && (
-          <nav aria-label="Разделы конференции">
-            {tabs.map(([value, label]) => (
-              <button
-                key={value}
-                aria-current={tab === value ? 'page' : undefined}
-                onClick={() => { setTab(value); setTalk(undefined); }}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-        )}
+        <nav aria-label="Разделы приложения">
+          <button aria-current={route.page === 'home' ? 'page' : undefined} onClick={() => go({ page: 'home' })}>
+            Конференции
+          </button>
+          <button aria-current={route.page === 'settings' ? 'page' : undefined} onClick={() => go({ page: 'settings' })}>
+            Управление
+          </button>
+        </nav>
+        <button
+          className="theme-toggle"
+          aria-label={dark ? 'Включить светлую тему' : 'Включить тёмную тему'}
+          title={dark ? 'Светлая тема' : 'Тёмная тема'}
+          onClick={() => setTheme(dark ? 'light' : 'dark')}
+        >
+          {dark ? '☀' : '☾'}
+        </button>
       </header>
       <main>
-        <div className="card">
-          <div className="row">
-            <label className="field">
-              <span>Конференция</span>
-              <select value={selected} onChange={(event) => choose(event.target.value)}>
-                <option value="">Выберите конференцию</option>
-                {conferences.map((conference) => (
-                  <option key={conference.id} value={conference.id}>{conference.title ?? 'Без названия'}</option>
+        {route.page === 'home' && <Home onOpen={(id) => go({ page: 'conference', id, tab: 'materials' })} />}
+        {route.page === 'settings' && <Settings theme={theme} onTheme={setTheme} />}
+        {conferenceId && (
+          <>
+            <div className="subnav">
+              <h2>{conference?.id === conferenceId ? conference.title ?? 'Без названия' : 'Конференция'}</h2>
+              <nav aria-label="Разделы конференции" className="row">
+                {tabs.map(([value, label]) => (
+                  <button
+                    key={value}
+                    aria-current={
+                      (route.page === 'conference' && route.tab === value)
+                      || (route.page === 'talk' && value === 'processing') ? 'page' : undefined
+                    }
+                    onClick={() => go({ page: 'conference', id: conferenceId, tab: value })}
+                  >
+                    {label}
+                  </button>
                 ))}
-              </select>
-            </label>
-            <form className="row" onSubmit={(event) => { event.preventDefault(); void createConference(); }}>
-              <label className="field">
-                <span>Название новой конференции</span>
-                <input value={title} onChange={(event) => setTitle(event.target.value)} required />
-              </label>
-              <button disabled={saving || !title.trim()} style={{ alignSelf: 'end' }}>Создать</button>
-            </form>
-          </div>
-          {error && <p role="alert">{error}</p>}
-        </div>
-        {selected && tab === 'materials' && <Materials key={selected} conferenceId={selected} />}
-        {selected && tab === 'processing' && (talk
-          ? <SummaryReview talkId={talk.id} title={talk.title ?? 'Доклад без названия'} onClose={() => setTalk(undefined)} />
-          : <Processing key={selected} conferenceId={selected} onOpen={setTalk} />)}
-        {selected && tab === 'report' && <ReportPanel key={selected} conferenceId={selected} />}
+              </nav>
+            </div>
+            {error && <p role="alert">{error}</p>}
+          </>
+        )}
+        {route.page === 'conference' && route.tab === 'materials' && (
+          <Materials
+            key={route.id}
+            conferenceId={route.id}
+            onStarted={() => go({ page: 'conference', id: route.id, tab: 'processing' })}
+          />
+        )}
+        {route.page === 'conference' && route.tab === 'processing' && (
+          <Processing
+            key={route.id}
+            conferenceId={route.id}
+            onOpen={(talk) => go({ page: 'talk', id: route.id, talkId: talk.id })}
+          />
+        )}
+        {route.page === 'conference' && route.tab === 'report' && <ReportPanel key={route.id} conferenceId={route.id} />}
+        {route.page === 'talk' && (
+          <SummaryReview
+            key={route.talkId}
+            talkId={route.talkId}
+            onClose={() => go({ page: 'conference', id: route.id, tab: 'processing' })}
+          />
+        )}
       </main>
     </>
   );

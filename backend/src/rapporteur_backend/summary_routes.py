@@ -67,6 +67,7 @@ class Progress(BaseModel):
 class TalkSummaryView(BaseModel):
     summary: Summary
     pack: TalkFragmentPack
+    talk_title: str | None
     talk_status: TalkStatus
 
 
@@ -174,11 +175,12 @@ def current_summary(conn: Connection, talk_id: UUID) -> RowMapping:
     return row
 
 
-def view(row: RowMapping, talk_status: str) -> TalkSummaryView:
+def view(row: RowMapping, talk: RowMapping, status: TalkStatus | None = None) -> TalkSummaryView:
     return TalkSummaryView(
         summary=Summary.model_validate(row["summary"]),
         pack=TalkFragmentPack.model_validate(row["pack"]),
-        talk_status=TalkStatus(talk_status),
+        talk_title=talk["title"],
+        talk_status=status or TalkStatus(talk["status"]),
     )
 
 
@@ -188,7 +190,7 @@ def get_summary(request: Request, response: Response, talk_id: UUID) -> TalkSumm
         talk = store.require(conn, t.talks, talk_id)
         row = current_summary(conn, talk_id)
     etag(response, row["number"])
-    return view(row, talk["status"])
+    return view(row, talk)
 
 
 def save_version(
@@ -296,7 +298,7 @@ def edit_summary(
             set_talk_status(conn, talk_id, talk["version"], TalkStatus.PROCESSED)
             status = TalkStatus.PROCESSED
     etag(response, saved["number"])
-    return view(saved, status.value)
+    return view(saved, talk, status)
 
 
 @router.post("/talks/{talk_id}/summary/review", response_model=TalkSummaryView)
@@ -333,7 +335,7 @@ def review_summary(
         )
         set_talk_status(conn, talk_id, talk["version"], TalkStatus.REVIEWED)
     etag(response, saved["number"])
-    return view(saved, TalkStatus.REVIEWED.value)
+    return view(saved, talk, TalkStatus.REVIEWED)
 
 
 @router.get(

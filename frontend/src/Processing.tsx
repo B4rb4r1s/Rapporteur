@@ -94,7 +94,17 @@ export function Processing(
       <h2 id="processing-title">Обработка</h2>
       {error && <p role="alert">{error}</p>}
       {progress && !progress.processing_started && (
-        <p>Обработка ещё не запущена: подтвердите привязки на вкладке «Материалы».</p>
+        <p className="notice">Обработка ещё не запущена: подтвердите привязки на вкладке «Материалы».</p>
+      )}
+      {progress?.processing_started && !progress.talks.length && (
+        <p className="notice">
+          В реестре нет докладов, поэтому сводок не будет. На вкладке «Материалы» добавьте доклады
+          или загрузите папку, где у каждого доклада своя подпапка, и подтвердите привязки.
+        </p>
+      )}
+      {progress?.processing_started && !!progress.talks.length
+        && progress.talks.every((talk) => talk.status === 'draft' || talk.status === 'insufficient_data') && (
+        <p className="notice">Ни к одному докладу не привязаны материалы: подтвердите привязки на вкладке «Материалы».</p>
       )}
       {progress && (
         <>

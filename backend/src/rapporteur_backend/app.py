@@ -20,6 +20,7 @@ from rapporteur_backend.migrate import MIGRATION_HEAD
 from rapporteur_backend.report_routes import router as report_router
 from rapporteur_backend.routes import engine, router
 from rapporteur_backend.summary_routes import router as summary_router
+from rapporteur_backend.system_routes import router as system_router
 from rapporteur_contracts.enums import ApiErrorCode
 
 
@@ -64,6 +65,7 @@ def create_app(
     app.include_router(material_router)
     app.include_router(summary_router)
     app.include_router(report_router)
+    app.include_router(system_router)
 
     @app.get("/health")
     def health() -> Health:

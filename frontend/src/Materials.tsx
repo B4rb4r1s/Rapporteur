@@ -75,7 +75,9 @@ function selectionFor(file: Material) {
   return file.suggested_talk_id ?? '';
 }
 
-export function Materials({ conferenceId }: { conferenceId: string }) {
+export function Materials(
+  { conferenceId, onStarted }: { conferenceId: string; onStarted?: () => void },
+) {
   const base = `/api/v1/conferences/${conferenceId}`;
   const [snapshot, setSnapshot] = useState<{ review: Review; etag: string }>();
   const [choices, setChoices] = useState<Record<string, string>>({});
@@ -186,6 +188,7 @@ export function Materials({ conferenceId }: { conferenceId: string }) {
         ...previous, review: { ...previous.review, processing_started: true },
       }));
       setStatus('Обработка запрошена.');
+      onStarted?.();
     } catch (reason) {
       setErrors([(reason as Error).message]);
     } finally {
@@ -230,6 +233,19 @@ export function Materials({ conferenceId }: { conferenceId: string }) {
   const files = snapshot?.review.files ?? [];
   const talks = snapshot?.review.talks ?? [];
   const sections = snapshot?.review.sections ?? [];
+  const materials = files.filter((file) => file.source.kind !== 'program');
+  const unconfirmed = materials.some((file) => !file.binding.confirmed);
+  const bound = materials.filter((file) => file.binding.confirmed && file.binding.talk_id).length;
+  let warning = '';
+  if (materials.length && !talks.length) {
+    warning = 'Реестр докладов пуст. Загрузите папку, где у каждого доклада своя подпапка '
+      + '(например, Иванов/ или 01_Иванов/), или добавьте доклады вручную. Без докладов '
+      + 'обработка разберёт файлы, но сводок не будет.';
+  } else if (materials.length && unconfirmed) {
+    warning = 'Проверьте и подтвердите привязки: пока они не подтверждены, шаги сводки ждут.';
+  } else if (materials.length && !bound) {
+    warning = 'Ни один файл не привязан к докладу: сводок не будет.';
+  }
   return (
     <section className="card" aria-labelledby="materials-title" aria-busy={!!busy}>
       <h2 id="materials-title">Материалы и привязки</h2>
@@ -333,8 +349,14 @@ export function Materials({ conferenceId }: { conferenceId: string }) {
         </>
       )}
       {snapshot && <p><a href={`${base}/conference.yaml`}>Скачать conference.yaml</a></p>}
+      {warning && <p className="notice">{warning}</p>}
       {snapshot?.review.processing_started
-        ? <p><a href={`/api/v1/jobs?conference_id=${conferenceId}`}>Задачи обработки (JSON)</a></p>
+        ? (
+          <p className="row">
+            <span className="pill ok">Обработка запущена</span>
+            {onStarted && <button onClick={onStarted}>Открыть ход обработки</button>}
+          </p>
+        )
         : files.length > 0 && (
           <p><button className="primary" disabled={!!busy} onClick={() => void startProcessing()}>Запустить обработку</button></p>
         )}
