@@ -3,6 +3,9 @@
 # Сеть internal без выхода наружу: приложение ходит только в Ollama, Ollama — никуда (spec §2).
 # Порт приложения публикуется через сеть edge без NAT: входящие подключения работают,
 # исходящий трафик в другие сети не возвращается.
+#
+# Вместо своей Ollama можно подключиться к Ollama другого проекта: OLLAMA_NETWORK и OLLAMA_URL
+# в .env, затем make up — запустится app-shared без своей Ollama (docs/ollama.md).
 name: rapporteur
 
 x-ollama: &ollama
@@ -21,32 +24,44 @@ x-ollama: &ollama
     OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
     OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
 
+x-app: &app
+  build:
+    context: .
+    target: app
+  image: rapporteur:local
+  restart: unless-stopped
+  ports:
+    - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8000}:8000"
+  volumes: [data:/data]
+  healthcheck:
+    test:
+      - CMD
+      - python
+      - -c
+      - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+    interval: 10s
+    timeout: 5s
+    retries: 6
+    start_period: 10s
+
 services:
   app:
-    build:
-      context: .
-      target: app
-    image: rapporteur:local
-    restart: unless-stopped
+    <<: *app
     environment:
       OLLAMA_URL: http://ollama:11434
-    ports:
-      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8000}:8000"
-    volumes: [data:/data]
     networks: [internal, edge]
     depends_on:
       ollama:
         condition: service_healthy
-    healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 10s
+
+  # То же приложение с Ollama другого проекта вместо своей. Подключается к её сети Docker;
+  # своя Ollama не запускается. Одновременно с app не запускать: у них общий порт и том.
+  app-shared:
+    <<: *app
+    profiles: [shared-ollama]
+    environment:
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+    networks: [edge, shared]
 
   # Модели лежат во внешнем каталоге OLLAMA_MODELS_DIR (blobs/ и manifests/) и подключаются
   # только на чтение (ADR-010). Ollama при старте переносит манифесты в manifests-v2, поэтому
@@ -134,6 +149,10 @@ services:
 networks:
   internal:
     internal: true
+  # Сеть Docker, в которой работает чужая Ollama (docker network ls); только для app-shared.
+  shared:
+    name: ${OLLAMA_NETWORK:-OLLAMA_NETWORK-not-set}
+    external: true
   edge:
     driver_opts:
       com.docker.network.bridge.enable_ip_masquerade: "false"

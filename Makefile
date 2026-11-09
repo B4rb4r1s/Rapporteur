@@ -14,6 +14,16 @@ NPM_BEFORE := 2026-10-20
 OLLAMA_PINNED = $(shell $(COMPOSE) config --images ollama)
 OLLAMA_TAG = $(firstword $(subst @, ,$(OLLAMA_PINNED)))
 BUNDLE := bundle
+# Ollama другого проекта: OLLAMA_NETWORK в .env или окружении включает app-shared без своей
+# Ollama (docs/ollama.md). Иначе — приложение и своя Ollama.
+OLLAMA_NETWORK ?= $(shell sed -n 's/^OLLAMA_NETWORK=//p' .env 2>/dev/null)
+# Все режимы: down, ps и logs видят и app, и app-shared.
+ALL := $(COMPOSE) --profile shared-ollama
+ifneq ($(strip $(OLLAMA_NETWORK)),)
+RUN := $(ALL) up app-shared
+else
+RUN := $(COMPOSE) up
+endif
 
 .DEFAULT_GOAL := help
 .PHONY: help up start down ps logs config check lint test format pull lock bundle install
@@ -23,23 +33,23 @@ help:
 
 ## make up      — собрать и запустить приложение и Ollama, http://127.0.0.1:8000
 up:
-	$(COMPOSE) up --build --detach --wait --wait-timeout 180
+	$(RUN) --build --detach --wait --wait-timeout 180
 
 ## make start   — запустить без сборки и скачивания образов (машина без интернета)
 start:
-	$(COMPOSE) up --detach --wait --wait-timeout 180 --no-build --pull never
+	$(RUN) --detach --wait --wait-timeout 180 --no-build --pull never
 
 ## make down    — остановить; база, материалы и справки остаются в томе data
 down:
-	$(COMPOSE) down
+	$(ALL) down
 
 ## make ps      — состояние сервисов
 ps:
-	$(COMPOSE) ps
+	$(ALL) ps
 
 ## make logs    — журнал приложения и Ollama
 logs:
-	$(COMPOSE) logs --follow
+	$(ALL) logs --follow
 
 ## make config  — проверить compose.yaml и .env без запуска
 config:
