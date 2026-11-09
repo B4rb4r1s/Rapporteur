@@ -4,12 +4,21 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { App, parseRoute, routeHash } from './App';
 
 const conference = {
-  id: 'conference', title: 'Конференция', start_date: '2026-10-20', end_date: null, place: 'г. Москва',
+  id: 'conference',
+  title: 'Конференция',
+  start_date: '2026-10-20',
+  end_date: null,
+  place: 'г. Москва',
+  organizer: null,
+  processing_started: false,
+  talks: 1,
+  summaries: 1,
+  reviewed: 0,
 };
 const progress = {
   processing_started: false,
-  stages: {},
-  talks: [{ id: 'first', section: 'Секция', order: 1, title: 'Первый', status: 'processed', stages: {}, error_code: null, summary_number: 1, summary_status: 'ready' }],
+  files: 1,
+  talks: [{ id: 'first', section: 'Секция', order: 1, title: 'Первый', status: 'processed', job: 'done', step: null, error: null, summary_number: 1, summary_status: 'ready' }],
 };
 
 beforeEach(() => {
@@ -45,30 +54,27 @@ test('адрес страницы задаёт раздел и доклад', ()
 
 test('главная показывает конференции и удаляет выбранную после подтверждения', async () => {
   const fetch = api({
-    '/api/v1/conferences': () => Response.json({ items: [conference], page: { total: 1 } }),
-    '/api/v1/conferences/conference/progress': () => Response.json(progress),
-    '/api/v1/conferences/conference': () => new Response(null, { status: 204, headers: { ETag: '"3"' } }),
+    '/api/v1/conferences': () => Response.json([conference]),
+    '/api/v1/conferences/conference': () => new Response(null, { status: 204 }),
   });
-  fetch.mockImplementationOnce(async () => Response.json({ items: [conference], page: { total: 1 } }));
   vi.stubGlobal('fetch', fetch);
   vi.spyOn(window, 'confirm').mockReturnValue(true);
   render(<App />);
 
   expect(screen.getByRole('heading', { level: 1, name: 'Репортёр' })).toBeDefined();
   const card = await screen.findByRole('article', { name: 'Конференция' });
-  await within(card).findByText('Проверено');
+  expect(within(card).getByText('Проверено')).toBeDefined();
+  expect(within(card).getByText('обработка не запущена')).toBeDefined();
   fireEvent.click(within(card).getByRole('button', { name: 'Удалить' }));
 
   await screen.findByText('Конференция «Конференция» удалена.');
   expect(screen.queryByRole('article', { name: 'Конференция' })).toBeNull();
-  expect(fetch).toHaveBeenLastCalledWith('/api/v1/conferences/conference', {
-    method: 'DELETE', headers: { 'If-Match': '"3"' },
-  });
+  expect(fetch).toHaveBeenLastCalledWith('/api/v1/conferences/conference', { method: 'DELETE' });
 });
 
 test('переключатель темы меняет тему и запоминает выбор', async () => {
   vi.stubGlobal('fetch', api({
-    '/api/v1/conferences': () => Response.json({ items: [], page: { total: 0 } }),
+    '/api/v1/conferences': () => Response.json([]),
   }));
   render(<App />);
   await screen.findByText('Конференций пока нет.');
@@ -80,7 +86,7 @@ test('переключатель темы меняет тему и запоми�
   expect(document.documentElement.dataset.theme).toBe('light');
 });
 
-test('сохраняет привязку с версией и после запуска переходит к ходу обработки', async () => {
+test('сохраняет привязку и после запуска переходит к ходу обработки', async () => {
   const review = {
     processing_started: false,
     sections: [{ id: 'section', title: 'Секция' }],
@@ -102,13 +108,11 @@ test('сохраняет привязку с версией и после зап
   const saved = { ...review, files: [{ ...review.files[0], binding: { confirmed: true, talk_id: 'second' } }] };
   let materials = 0;
   const fetch = api({
-    '/api/v1/conferences/conference': () => Response.json(conference, { headers: { ETag: '"1"' } }),
-    '/api/v1/conferences/conference/materials': () => Response.json(materials++ ? saved : review, {
-      headers: { ETag: '"4"' },
-    }),
-    '/api/v1/conferences/conference/materials/bindings': () => Response.json(saved, { headers: { ETag: '"5"' } }),
+    '/api/v1/conferences/conference': () => Response.json(conference),
+    '/api/v1/conferences/conference/materials': () => Response.json(materials++ ? saved : review),
+    '/api/v1/conferences/conference/materials/bindings': () => Response.json(saved),
     '/api/v1/conferences/conference/processing': () => Response.json(
-      { status_url: '/api/v1/jobs?conference_id=conference' }, { status: 202 },
+      { ...progress, processing_started: true }, { status: 202 },
     ),
     '/api/v1/conferences/conference/progress': () => Response.json({ ...progress, processing_started: true }),
   });
@@ -124,7 +128,7 @@ test('сохраняет привязку с версией и после зап
   await screen.findByText('Привязки сохранены.');
   expect(fetch).toHaveBeenCalledWith('/api/v1/conferences/conference/materials/bindings', {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'If-Match': '"4"' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ bindings: [{ source_file_id: 'file', talk_id: 'second' }] }),
   });
 

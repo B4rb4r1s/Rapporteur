@@ -34,7 +34,7 @@ type Summary = {
   claims: Claim[];
   sentences: Line[];
   conclusions: Line[];
-  edited_by: string | null;
+  human_edit: boolean;
   created_at: string;
 };
 export type SummaryView = {
@@ -98,7 +98,7 @@ export function SummaryReview(
   { talkId, title, onClose }: { talkId: string; title?: string; onClose: () => void },
 ) {
   const url = `/api/v1/talks/${talkId}/summary`;
-  const [snapshot, setSnapshot] = useState<{ view: SummaryView; etag: string }>();
+  const [view, setView] = useState<SummaryView>();
   const [selected, setSelected] = useState('');
   const [draft, setDraft] = useState<Draft>();
   const [busy, setBusy] = useState('');
@@ -106,10 +106,7 @@ export function SummaryReview(
   const [error, setError] = useState('');
 
   async function read(response: Response) {
-    const etag = response.headers.get('ETag');
-    if (!etag) throw new Error('Сервер не вернул версию сводки');
-    const view: SummaryView = await response.json();
-    setSnapshot({ view, etag });
+    setView(await response.json());
   }
 
   useEffect(() => {
@@ -137,7 +134,7 @@ export function SummaryReview(
     }
   }
 
-  if (!snapshot) {
+  if (!view) {
     return (
       <section aria-label="Проверка сводки">
         <p><button className="link" onClick={onClose}><span aria-hidden="true">← </span>К списку докладов</button></p>
@@ -146,7 +143,7 @@ export function SummaryReview(
     );
   }
 
-  const { summary, pack, talk_status: talkStatus } = snapshot.view;
+  const { summary, pack, talk_status: talkStatus } = view;
   const claims = new Map(summary.claims.map((claim) => [claim.key, claim]));
   const fragments = new Map(pack.fragments.map((fragment) => [fragment.revision_id, fragment]));
   const byLabel = new Map(pack.fragments.map((fragment) => [fragment.label, fragment]));
@@ -162,7 +159,7 @@ export function SummaryReview(
   }
 
   function save() {
-    if (!draft || !snapshot) return;
+    if (!draft) return;
     const edited = summary.claims
       .filter((item) => draft.claims[item.key].trim() && draft.claims[item.key] !== item.text)
       .map((item) => ({ key: item.key, text: draft.claims[item.key].trim() }));
@@ -171,8 +168,9 @@ export function SummaryReview(
       .filter((line) => line.text);
     void act('Сохранение…', 'Правка сохранена, создана новая версия.', () => request(url, {
       method: 'PUT',
-      headers: { ...json, 'If-Match': snapshot.etag },
+      headers: json,
       body: JSON.stringify({
+        version: summary.version,
         sentences: lines(draft.sentences),
         conclusions: lines(draft.conclusions),
         claims: edited,
@@ -227,11 +225,11 @@ export function SummaryReview(
     <section aria-labelledby="summary-title" aria-busy={!!busy}>
       <p><button className="link" onClick={onClose}><span aria-hidden="true">← </span>К списку докладов</button></p>
       <div className="card">
-        <h2 id="summary-title">{title ?? snapshot.view.talk_title ?? 'Доклад без названия'}</h2>
+        <h2 id="summary-title">{title ?? view.talk_title ?? 'Доклад без названия'}</h2>
         <div className="kv">
           <div><b>Доклад</b><span className={`pill ${statusTone[talkStatus] ?? ''}`}>{talkStatuses[talkStatus] ?? talkStatus}</span></div>
           <div><b>Версия сводки</b>{summary.version}</div>
-          <div><b>Автор версии</b>{summary.edited_by ? 'правка человека' : `модель, профиль ${summary.profile}`}</div>
+          <div><b>Автор версии</b>{summary.human_edit ? 'правка человека' : `модель, профиль ${summary.profile}`}</div>
           {summary.status === 'needs_attention' && (
             <div><b>Проверки</b><span className="pill warn">не пройдены, нужна правка</span></div>
           )}
@@ -290,7 +288,8 @@ export function SummaryReview(
                   disabled={!!busy || talkStatus === 'reviewed' || !summary.sentences.length}
                   onClick={() => void act('Подтверждение…', 'Сводка проверена.', () => request(`${url}/review`, {
                     method: 'POST',
-                    headers: { 'If-Match': snapshot.etag },
+                    headers: json,
+                    body: JSON.stringify({ version: summary.version }),
                   }))}
                 >
                   Подтвердить проверку
@@ -322,7 +321,7 @@ export function SummaryReview(
                   {fragment && <blockquote>{highlight(fragment.text, item.span)}</blockquote>}
                   {fragment?.locator.kind === 'page' && fragment.kind.startsWith('slide') && (
                     <img
-                      src={`/api/v1/source-files/${fragment.source_file_id}/slides/${fragment.locator.page_no}`}
+                      src={`/api/v1/files/${fragment.source_file_id}/slides/${fragment.locator.page_no}`}
                       alt={`Слайд ${fragment.locator.page_no}`}
                       loading="lazy"
                     />

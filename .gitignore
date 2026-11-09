@@ -1,6 +1,24 @@
 
+/.agents
+/.claude
+skills*
+
 /docs/SoW
 
 /data
 
 /.env
+
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# Остатки версии до ADR-014: результаты старого CLI, каталоги тома, схема. В git не входят:
+# в них данные из data/ (spec §16).
+/.old
+
+/bundle
+
+/storage

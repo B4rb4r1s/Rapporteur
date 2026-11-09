@@ -5,73 +5,68 @@ import type { Theme } from './theme';
 
 type SystemInfo = {
   version: string;
-  mode: 'dev' | 'gpu';
-  migration: string;
+  ollama_url: string;
+  ollama_available: boolean;
+  ollama_models: string[];
   profiles: { name: string; model: string; reasoning: boolean; prompt_version: string; default: boolean }[];
   templates: { name: string; version: string }[];
-  queue: Record<string, Record<string, number>>;
+  queue: Partial<Record<'queued' | 'running' | 'failed', number>>;
 };
-type Job = {
-  id: string;
-  stage: string | null;
-  conference_id: string | null;
-  talk_id: string | null;
-  error_code: string | null;
-  created_at: string;
+
+type OllamaModel = {
+  name: string;
+  parameter_size: string | null;
+  quantization: string | null;
+  thinking: boolean;
+};
+type ActiveModel = { profile: string; model: string; reasoning: boolean; chosen: boolean };
+export type ModelState = {
+  current: ActiveModel;
+  default: ActiveModel;
+  ollama_available: boolean;
+  models: OllamaModel[];
 };
 
 const themes: [Theme, string][] = [['system', 'Как в системе'], ['light', 'Светлая'], ['dark', 'Тёмная']];
-const modes = { dev: 'dev — без GPU, шаги модели заменены заглушками', gpu: 'gpu — настоящая модель через Ollama' };
-const resources: Record<string, string> = { cpu: 'Процессор', gpu: 'Видеокарта' };
-const statuses: Record<string, string> = {
-  queued: 'в очереди',
-  running: 'идёт',
-  succeeded: 'готово',
-  failed: 'ошибка',
-  cancelled: 'отменено',
-  cancel_requested: 'отменяется',
-  retry_wait: 'повтор',
-};
+const json = { 'Content-Type': 'application/json' };
 
-async function fetchState(signal?: AbortSignal): Promise<[SystemInfo, Job[]]> {
-  const info: SystemInfo = await (await request('/api/v1/system', { signal })).json();
-  const page: { items: Job[] } = await (await request('/api/v1/jobs?status=failed&limit=50', { signal })).json();
-  return [info, page.items];
+function describe(model: ActiveModel) {
+  return `${model.model}, ${model.reasoning ? 'с рассуждением' : 'без рассуждения'}`;
 }
 
-export function Settings({ theme, onTheme }: { theme: Theme; onTheme: (theme: Theme) => void }) {
-  const [info, setInfo] = useState<SystemInfo>();
-  const [failed, setFailed] = useState<Job[]>([]);
+/** Модель для сводок и режим рассуждения; галочка доступна, только если модель умеет рассуждать. */
+function ModelCard() {
+  const [state, setState] = useState<ModelState>();
+  const [model, setModel] = useState('');
+  const [reasoning, setReasoning] = useState(false);
   const [busy, setBusy] = useState('');
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
-  function show([system, jobs]: [SystemInfo, Job[]]) {
-    setInfo(system);
-    setFailed(jobs);
+  function show(value: ModelState) {
+    setState(value);
+    setModel(value.current.model);
+    setReasoning(value.current.reasoning);
   }
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetchState(controller.signal)
-      .then(([system, jobs]) => {
-        setInfo(system);
-        setFailed(jobs);
-      })
+    void request('/api/v1/model', { signal: controller.signal })
+      .then(async (response) => show(await response.json()))
       .catch((reason: Error) => {
         if (!controller.signal.aborted) setError(reason.message);
       });
     return () => controller.abort();
   }, []);
 
-  async function retry(job: Job) {
-    setBusy('Повтор…');
+  async function save(body: { model: string | null; reasoning: boolean }, done: string) {
+    setBusy('Сохранение…');
     setError('');
     setStatus('');
     try {
-      await request(`/api/v1/jobs/${job.id}/retry`, { method: 'POST' });
-      show(await fetchState());
-      setStatus(`Задача «${job.stage}» поставлена заново.`);
+      const response = await request('/api/v1/model', { method: 'PUT', headers: json, body: JSON.stringify(body) });
+      show(await response.json());
+      setStatus(done);
     } catch (reason) {
       setError((reason as Error).message);
     } finally {
@@ -79,8 +74,96 @@ export function Settings({ theme, onTheme }: { theme: Theme; onTheme: (theme: Th
     }
   }
 
+  if (!state) return error ? <div className="card"><p role="alert">{error}</p></div> : null;
+  const selected = state.models.find((item) => item.name === model);
+  const canThink = !!selected?.thinking;
+  const changed = model !== state.current.model || reasoning !== state.current.reasoning;
   return (
-    <section aria-labelledby="settings-title" aria-busy={!!busy}>
+    <div className="card" aria-busy={!!busy}>
+      <h3 style={{ marginTop: 0 }}>Модель для сводок</h3>
+      <p>
+        Сейчас: <b>{describe(state.current)}</b>{' '}
+        <span className="muted">
+          {state.current.chosen ? '— выбрано здесь' : `— профиль ${state.current.profile} из profiles.yaml`}
+        </span>
+      </p>
+      {state.ollama_available ? (
+        <form className="row" onSubmit={(event) => {
+          event.preventDefault();
+          void save({ model, reasoning: canThink && reasoning }, 'Модель сохранена.');
+        }}>
+          <label className="field">
+            <span>Модель Ollama</span>
+            <select
+              value={model}
+              disabled={!!busy}
+              onChange={(event) => {
+                const next = state.models.find((item) => item.name === event.target.value);
+                setModel(event.target.value);
+                if (!next?.thinking) setReasoning(false);
+              }}
+            >
+              {!selected && <option value={model}>{model} — нет в Ollama</option>}
+              {state.models.map((item) => (
+                <option key={item.name} value={item.name}>
+                  {[item.name, item.parameter_size, item.quantization].filter(Boolean).join(' · ')}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="check" style={{ alignSelf: 'end' }}>
+            <input
+              type="checkbox"
+              checked={canThink && reasoning}
+              disabled={!!busy || !canThink}
+              onChange={(event) => setReasoning(event.target.checked)}
+            />
+            Режим рассуждения
+          </label>
+          <button className="primary" disabled={!!busy || !changed || !selected} style={{ alignSelf: 'end' }}>
+            Сохранить
+          </button>
+          {state.current.chosen && (
+            <button
+              type="button"
+              disabled={!!busy}
+              style={{ alignSelf: 'end' }}
+              onClick={() => void save({ model: null, reasoning: false }, 'Возвращена модель из profiles.yaml.')}
+            >
+              Как в profiles.yaml
+            </button>
+          )}
+        </form>
+      ) : (
+        <p className="notice">Ollama недоступна: список моделей не получить, выбор модели отложен.</p>
+      )}
+      {selected && !canThink && <p className="muted">У этой модели нет режима рассуждения.</p>}
+      <p className="muted">
+        Новая модель применяется к докладам, которые обрабатываются после сохранения; готовые сводки
+        не пересчитываются. По умолчанию — {describe(state.default)} (профиль {state.default.profile}).
+      </p>
+      <p role="status">{busy || status}</p>
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+}
+
+export function Settings({ theme, onTheme }: { theme: Theme; onTheme: (theme: Theme) => void }) {
+  const [info, setInfo] = useState<SystemInfo>();
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void request('/api/v1/system', { signal: controller.signal })
+      .then(async (response) => setInfo(await response.json()))
+      .catch((reason: Error) => {
+        if (!controller.signal.aborted) setError(reason.message);
+      });
+    return () => controller.abort();
+  }, []);
+
+  return (
+    <section aria-labelledby="settings-title">
       <div className="card">
         <h2 id="settings-title">Управление</h2>
         <fieldset>
@@ -94,77 +177,59 @@ export function Settings({ theme, onTheme }: { theme: Theme; onTheme: (theme: Th
             ))}
           </div>
         </fieldset>
-        <p role="status">{busy || status}</p>
         {error && <p role="alert">{error}</p>}
       </div>
 
-      {info && (
-        <>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Установка</h3>
-            <div className="kv">
-              <div><b>Версия</b>{info.version}</div>
-              <div><b>Режим воркеров</b>{modes[info.mode] ?? info.mode}</div>
-              <div><b>Миграция БД</b>{info.migration}</div>
-            </div>
-            <h3>Профили моделей</h3>
-            {info.profiles.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th scope="col">Профиль</th><th scope="col">Модель</th><th scope="col">Рассуждение</th><th scope="col">Промпты</th></tr></thead>
-                  <tbody>
-                    {info.profiles.map((profile) => (
-                      <tr key={profile.name}>
-                        <th scope="row">
-                          {profile.name}{' '}
-                          {profile.default && <span className="pill info">по умолчанию</span>}
-                        </th>
-                        <td>{profile.model}</td>
-                        <td>{profile.reasoning ? 'да' : 'нет'}</td>
-                        <td>{profile.prompt_version}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : <p className="muted">Файл профилей недоступен.</p>}
-            <p className="muted">Профиль по умолчанию задаётся в pipeline/profiles.yaml; смена профиля перезапускает шаги сводки.</p>
-            <h3>Бланки справки</h3>
-            <ul>{info.templates.map((item) => <li key={item.name}>{item.name} — версия {item.version}</li>)}</ul>
-          </div>
+      <ModelCard />
 
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Очередь задач</h3>
-            {Object.keys(info.queue).length ? (
-              <div className="kv">
-                {Object.entries(info.queue).map(([resource, counts]) => (
-                  <div key={resource}>
-                    <b>{resources[resource] ?? resource}</b>
-                    {Object.entries(counts).map(([name, count]) => `${statuses[name] ?? name}: ${count}`).join(', ')}
-                  </div>
-                ))}
-              </div>
-            ) : <p className="muted">Задач нет.</p>}
-            <h3>Задачи с ошибкой</h3>
-            {failed.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th scope="col">Этап</th><th scope="col">Ошибка</th><th scope="col">Создана</th><th scope="col"><span hidden>Действие</span></th></tr></thead>
-                  <tbody>
-                    {failed.map((job) => (
-                      <tr key={job.id}>
-                        <th scope="row">{job.stage}</th>
-                        <td><span className="pill bad">{job.error_code ?? 'ошибка'}</span></td>
-                        <td>{new Date(job.created_at).toLocaleString('ru-RU')}</td>
-                        <td><button disabled={!!busy} onClick={() => void retry(job)}>Повторить</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : <p className="muted">Ошибок нет.</p>}
+      {info && (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Установка</h3>
+          <div className="kv">
+            <div><b>Версия</b>{info.version}</div>
+            <div>
+              <b>Ollama</b>
+              {info.ollama_available
+                ? <span className="pill ok">доступна</span>
+                : <span className="pill bad">недоступна</span>}
+            </div>
+            <div><b>В очереди</b>{info.queue.queued ?? 0}</div>
+            <div><b>Обрабатывается</b>{info.queue.running ?? 0}</div>
+            <div><b>С ошибкой</b>{info.queue.failed ?? 0}</div>
           </div>
-        </>
+          {info.ollama_available && (
+            <p className="muted">
+              Модели Ollama: {info.ollama_models.length ? info.ollama_models.join(', ') : 'не загружены'}.
+            </p>
+          )}
+          <h3>Профили моделей</h3>
+          {info.profiles.length ? (
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th scope="col">Профиль</th><th scope="col">Модель</th><th scope="col">Рассуждение</th><th scope="col">Промпты</th></tr></thead>
+                <tbody>
+                  {info.profiles.map((profile) => (
+                    <tr key={profile.name}>
+                      <th scope="row">
+                        {profile.name}{' '}
+                        {profile.default && <span className="pill info">по умолчанию</span>}
+                      </th>
+                      <td>{profile.model}</td>
+                      <td>{profile.reasoning ? 'да' : 'нет'}</td>
+                      <td>{profile.prompt_version}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p className="muted">Файл профилей недоступен.</p>}
+          <p className="muted">
+            Профиль по умолчанию задаётся в profiles.yaml; смена профиля перезапускает шаги сводки.
+            Доклады с ошибкой повторяются на вкладке «Обработка» конференции.
+          </p>
+          <h3>Бланки справки</h3>
+          <ul>{info.templates.map((item) => <li key={item.name}>{item.name} — версия {item.version}</li>)}</ul>
+        </div>
       )}
     </section>
   );

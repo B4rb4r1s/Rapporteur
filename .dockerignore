@@ -1,0 +1,16 @@
+# В образ попадает только перечисленное: data/, docs/ и локальные кэши остаются снаружи.
+**
+!pyproject.toml
+!uv.lock
+!src/
+!prompts/
+!templates/
+!profiles.yaml
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/index.html
+!frontend/tsconfig.json
+!frontend/vite.config.ts
+!frontend/eslint.config.js
+!frontend/src/
+**/__pycache__

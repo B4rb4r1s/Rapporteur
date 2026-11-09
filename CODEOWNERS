@@ -1,15 +1,15 @@
-# Владельцы каталогов проекта «Репортёр» (docs/spec.md, §14; ADR-007).
+# Владельцы каталогов проекта «Репортёр» (docs/spec.md, §14; ADR-007, ADR-014).
 # До подключения команды 2 и появления CI файл служит картой владельцев (ADR-011).
 #
 # Заглушки замените на реальные логины или группы до включения правил ветки:
 #   @k1-lead  команда 1, лид: архитектура, контракты, оценка, разбиение записей
 #   @k1-dev   команда 1, разработчик: сводки, промпты, сборка справки
 #   @k2-a     команда 2, разработчик A: инфраструктура, GPU, приём файлов, речь
-#   @k2-b     команда 2, разработчик B: backend и frontend
+#   @k2-b     команда 2, разработчик B: веб-приложение и фронтенд
 #
 # Первым в строке указан ведущий потока, следом ревьюер из другой команды.
 # Побеждает последнее совпавшее правило, поэтому общие правила стоят выше частных.
-# CODEOWNERS только назначает ревьюеров. Одобрение обеих команд для contracts/
+# CODEOWNERS только назначает ревьюеров. Одобрение обеих команд для контрактов
 # и docs/adr/ закрепляется правилом защиты основной ветки.
 
 # По умолчанию
@@ -23,24 +23,31 @@
 /CODEOWNERS             @k1-lead @k2-a
 
 # Контракты: только с ревью обеих команд
-/contracts/             @k1-lead @k2-a @k2-b
+/src/rapporteur/contracts/          @k1-lead @k2-a @k2-b
 
 # Команда 1: ядро
-/eval/                  @k1-lead @k2-a
-/pipeline/graph.yaml                              @k1-lead @k2-a
-/pipeline/src/rapporteur_pipeline/segment/        @k1-lead @k2-a
-/pipeline/src/rapporteur_pipeline/summarize/      @k1-dev @k1-lead
-/prompts/                                         @k1-dev @k1-lead
-/pipeline/src/rapporteur_pipeline/report/         @k1-dev @k2-b
-/templates/                                       @k1-dev @k2-b
+/eval/                              @k1-lead @k2-a
+/src/rapporteur/processing.py       @k1-lead @k2-a
+/src/rapporteur/segment/            @k1-lead @k2-a
+/src/rapporteur/summarize/          @k1-dev @k1-lead
+/src/rapporteur/llm/                @k1-dev @k1-lead
+/prompts/                           @k1-dev @k1-lead
+/profiles.yaml                      @k1-lead @k2-a
+/src/rapporteur/report/             @k1-dev @k2-b
+/templates/                         @k1-dev @k2-b
 
 # Команда 2: платформа
-/deploy/                @k2-a @k1-lead
-/workers/               @k2-a @k1-lead
-/pipeline/src/rapporteur_pipeline/ingest/         @k2-a @k1-lead
-/pipeline/src/rapporteur_pipeline/speech/         @k2-a @k1-lead
-/backend/               @k2-b @k1-dev
-/frontend/              @k2-b @k1-dev
+/Dockerfile                         @k2-a @k1-lead
+/compose.yaml                       @k2-a @k1-lead
+/Makefile                           @k2-a @k1-lead
+/src/rapporteur/ingest/             @k2-a @k1-lead
+/src/rapporteur/speech/             @k2-a @k1-lead
+/src/rapporteur/app.py              @k2-b @k1-dev
+/src/rapporteur/db.py               @k2-b @k1-dev
+/src/rapporteur/materials.py        @k2-b @k1-dev
+/src/rapporteur/summaries.py        @k2-b @k1-dev
+/src/rapporteur/reports.py          @k2-b @k1-dev
+/frontend/                          @k2-b @k1-dev
 
 # Общие фикстуры нужны обеим командам
-/tests/fixtures/        @k1-lead @k2-b
+/tests/fixtures/                    @k1-lead @k2-b
