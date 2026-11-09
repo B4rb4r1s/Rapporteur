@@ -374,6 +374,7 @@
 
 | Дата | Что изменилось | Где |
 | --- | --- | --- |
+| 2026-11-09 | хранилище приложения (база SQLite, оригиналы, кэш, справки) — каталог на хосте `RAPPORTEUR_STORAGE`, по умолчанию `storage/`, вместо тома Docker; приложение работает от `HOST_UID` | `compose.yaml`, `Makefile`, spec §8 |
 | 2026-11-09 | Ollama другого проекта вместо своей: `OLLAMA_NETWORK` и `OLLAMA_URL` в `.env` включают сервис `app-shared` в сети той Ollama; своя не запускается | `compose.yaml`, `Makefile`, `docs/ollama.md` |
 | 2026-11-09 | офлайн-комплект v0 (часть P0-07 К2 · A): `make bundle` — образы, модели и `SHA256SUMS`; `make install`, `make start` без сборки и скачивания; образ Ollama в комплекте задаётся тегом через `OLLAMA_IMAGE` | `Makefile`, `compose.yaml`, `src/rapporteur/bundle.py`, `docs/offline.md` |
 | 2026-11-09 | модель для сводок и режим рассуждения выбираются на странице «Управление» и хранятся в базе; профиль по умолчанию по-прежнему в `profiles.yaml` (уточнение ADR-011: профили не только файлом) | `src/rapporteur/model_choice.py`, `docs/api.md` |

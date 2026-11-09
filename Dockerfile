@@ -52,7 +52,7 @@ COPY profiles.yaml ./
 COPY --from=web /app/frontend/dist ./static
 ENV RAPPORTEUR_STATIC_DIR=/app/static \
     RAPPORTEUR_DATA_DIR=/data
-# Новый именованный том получает владельца от этого каталога.
+# Точка подключения хранилища: compose подключает сюда storage/ с хоста.
 RUN mkdir /data && chown 1000:1000 /data
 USER 1000:1000
 EXPOSE 8000

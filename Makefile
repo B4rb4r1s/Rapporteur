@@ -17,6 +17,8 @@ BUNDLE := bundle
 # Ollama другого проекта: OLLAMA_NETWORK в .env или окружении включает app-shared без своей
 # Ollama (docs/ollama.md). Иначе — приложение и своя Ollama.
 OLLAMA_NETWORK ?= $(shell sed -n 's/^OLLAMA_NETWORK=//p' .env 2>/dev/null)
+# Хранилище приложения на хосте (RAPPORTEUR_STORAGE в .env), по умолчанию storage/.
+RAPPORTEUR_STORAGE ?= $(or $(shell sed -n 's/^RAPPORTEUR_STORAGE=//p' .env 2>/dev/null),./storage)
 # Все режимы: down, ps и logs видят и app, и app-shared.
 ALL := $(COMPOSE) --profile shared-ollama
 ifneq ($(strip $(OLLAMA_NETWORK)),)
@@ -33,13 +35,15 @@ help:
 
 ## make up      — собрать и запустить приложение и Ollama, http://127.0.0.1:8000
 up:
+	mkdir -p $(RAPPORTEUR_STORAGE)
 	$(RUN) --build --detach --wait --wait-timeout 180
 
 ## make start   — запустить без сборки и скачивания образов (машина без интернета)
 start:
+	mkdir -p $(RAPPORTEUR_STORAGE)
 	$(RUN) --detach --wait --wait-timeout 180 --no-build --pull never
 
-## make down    — остановить; база, материалы и справки остаются в томе data
+## make down    — остановить; база, материалы и справки остаются в storage/
 down:
 	$(ALL) down
 
