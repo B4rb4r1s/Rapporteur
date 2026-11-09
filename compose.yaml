@@ -6,7 +6,9 @@
 name: rapporteur
 
 x-ollama: &ollama
-  image: ollama/ollama:0.40.13@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429
+  # Образ закреплён по digest. В комплекте без интернета OLLAMA_IMAGE задаёт его тегом:
+  # docker load может не сохранить digest, а целостность проверяет SHA256SUMS (docs/offline.md).
+  image: ${OLLAMA_IMAGE:-ollama/ollama:0.40.13@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429}
   user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
   gpus: all
   environment:
@@ -92,6 +94,20 @@ services:
         source: ${OLLAMA_MODELS_DIR:-./OLLAMA_MODELS_DIR-not-set}
         target: /models
     entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 3; ollama pull \"$0\""]
+
+  # Модели для комплекта без интернета: make bundle [MODEL="qwen3.5:9b …"].
+  export-model:
+    image: rapporteur:local
+    profiles: [tools]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    network_mode: none
+    volumes:
+      - type: bind
+        source: ${OLLAMA_MODELS_DIR:-./OLLAMA_MODELS_DIR-not-set}
+        target: /models
+        read_only: true
+      - ./bundle/models:/out
+    entrypoint: [python, -m, rapporteur.bundle, /models, /out]
 
   # Проверки Python: make check. Исходники с хоста, сети нет.
   dev:

@@ -10,7 +10,6 @@ import json
 import logging
 import sqlite3
 import tempfile
-import urllib.request
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from importlib.metadata import version
@@ -27,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from starlette.concurrency import run_in_threadpool
 
-from rapporteur import db, materials, processing, reports, settings, summaries
+from rapporteur import db, materials, model_choice, processing, reports, settings, summaries
 from rapporteur.contracts import ModelProfile, SourceFile, Speaker
 from rapporteur.contracts.base import NonEmptyStr
 from rapporteur.contracts.enums import ReportFormat, SummaryStatus, TalkStatus
@@ -585,14 +584,6 @@ def _templates() -> list[TemplateInfo]:
     return result
 
 
-def _ollama_models() -> list[str] | None:
-    try:
-        with urllib.request.urlopen(f"{settings.OLLAMA_URL}/api/tags", timeout=2) as answer:
-            return [item["name"] for item in json.load(answer).get("models", [])]
-    except (OSError, ValueError, KeyError):
-        return None
-
-
 @api.get("/system")
 def system(request: Request) -> SystemInfo:
     # Запрос к Ollama идёт вне транзакции: он не должен задерживать обработку.
@@ -604,13 +595,30 @@ def system(request: Request) -> SystemInfo:
                 "WHERE job IN ('queued', 'running', 'failed') GROUP BY job"
             )
         }
-    models = _ollama_models()
+    models = model_choice.installed_models(settings.OLLAMA_URL)
     return SystemInfo(
         version=request.app.version,
         ollama_url=settings.OLLAMA_URL,
         ollama_available=models is not None,
-        ollama_models=models or [],
+        ollama_models=[item.name for item in models or []],
         profiles=_profiles(),
         templates=_templates(),
         queue=queue,
     )
+
+
+@api.get("/model")
+def get_model(request: Request) -> model_choice.ModelState:
+    """Модель для сводок: текущая, по умолчанию и установленные в Ollama."""
+    models = model_choice.installed_models(settings.OLLAMA_URL)
+    with _database(request).tx() as conn:
+        return model_choice.state(conn, models)
+
+
+@api.put("/model")
+def set_model(request: Request, data: model_choice.ModelChoiceWrite) -> model_choice.ModelState:
+    """Новая модель применяется к докладам, которые обрабатываются после сохранения."""
+    models = model_choice.installed_models(settings.OLLAMA_URL)
+    with _database(request).tx() as conn:
+        model_choice.save(conn, data, models)
+        return model_choice.state(conn, models)

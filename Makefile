@@ -10,9 +10,13 @@ PYTHON_IMAGE := python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb5
 NODE_IMAGE := node:22-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da
 # Только версии npm старше двух недель на момент блокировки; дату сдвигать вместе с make lock.
 NPM_BEFORE := 2026-10-20
+# Образ Ollama из compose.yaml: по digest на машине сборки, в комплекте — тегом без digest.
+OLLAMA_PINNED = $(shell $(COMPOSE) config --images ollama)
+OLLAMA_TAG = $(firstword $(subst @, ,$(OLLAMA_PINNED)))
+BUNDLE := bundle
 
 .DEFAULT_GOAL := help
-.PHONY: help up down ps logs config check lint test format pull lock
+.PHONY: help up start down ps logs config check lint test format pull lock bundle install
 
 help:
 	@grep -E '^## ' Makefile | sed 's/^## //'
@@ -20,6 +24,10 @@ help:
 ## make up      — собрать и запустить приложение и Ollama, http://127.0.0.1:8000
 up:
 	$(COMPOSE) up --build --detach --wait --wait-timeout 180
+
+## make start   — запустить без сборки и скачивания образов (машина без интернета)
+start:
+	$(COMPOSE) up --detach --wait --wait-timeout 180 --no-build --pull never
 
 ## make down    — остановить; база, материалы и справки остаются в томе data
 down:
@@ -65,3 +73,26 @@ lock:
 	docker run --rm --user $(HOST_UID):$(HOST_GID) -e HOME=/tmp \
 	  -v $(CURDIR)/frontend:/app -w /app $(NODE_IMAGE) \
 	  npm install --package-lock-only --ignore-scripts --no-audit --no-fund --before=$(NPM_BEFORE)
+
+## make bundle [MODEL="qwen3.5:9b …"] — комплект для машины без интернета в bundle/
+## Без MODEL берётся модель профиля по умолчанию из profiles.yaml (docs/offline.md).
+bundle:
+	$(COMPOSE) build app
+	docker pull $(OLLAMA_PINNED)
+	docker tag $(OLLAMA_PINNED) $(OLLAMA_TAG)
+	mkdir -p $(BUNDLE)/models
+	$(COMPOSE) run --rm export-model $(MODEL)
+	docker save --output $(BUNDLE)/images.tar rapporteur:local $(OLLAMA_TAG)
+	cp compose.yaml Makefile $(BUNDLE)/
+	cp docs/offline.md $(BUNDLE)/README.md
+	sed 's|^OLLAMA_MODELS_DIR=.*|OLLAMA_MODELS_DIR=./models|' .env.example > $(BUNDLE)/.env.example
+	printf '\n# Образ Ollama из комплекта: тег вместо digest (docs/offline.md).\nOLLAMA_IMAGE=%s\n' \
+	  "$(OLLAMA_TAG)" >> $(BUNDLE)/.env.example
+	cd $(BUNDLE) && find images.tar models -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+	@du -sh $(BUNDLE)
+
+## make install — в каталоге комплекта: проверить контрольные суммы и загрузить образы
+install:
+	sha256sum --check --quiet SHA256SUMS
+	docker load --input images.tar
+	@test -f .env || { cp .env.example .env; echo "Создан .env: проверьте WEB_BIND_ADDRESS и WEB_PORT"; }

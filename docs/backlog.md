@@ -374,6 +374,8 @@
 
 | Дата | Что изменилось | Где |
 | --- | --- | --- |
+| 2026-11-09 | офлайн-комплект v0 (часть P0-07 К2 · A): `make bundle` — образы, модели и `SHA256SUMS`; `make install`, `make start` без сборки и скачивания; образ Ollama в комплекте задаётся тегом через `OLLAMA_IMAGE` | `Makefile`, `compose.yaml`, `src/rapporteur/bundle.py`, `docs/offline.md` |
+| 2026-11-09 | модель для сводок и режим рассуждения выбираются на странице «Управление» и хранятся в базе; профиль по умолчанию по-прежнему в `profiles.yaml` (уточнение ADR-011: профили не только файлом) | `src/rapporteur/model_choice.py`, `docs/api.md` |
 | 2026-11-09 | ADR-014: один пакет `rapporteur`, один `compose.yaml` (`app` и `ollama`), SQLite вместо PostgreSQL, обработка докладов фоновым потоком приложения вместо очереди, графа, планировщика и двух воркеров; без режима dev и заглушек; без ETag; справка собирается в запросе; удалены генерация JSON Schema и TS-типов и CLI `make report` | ADR-014, spec §8, §11, §14, `docs/api.md`, `CODEOWNERS` |
 | 2026-11-09 | контракты без `ArtifactMeta`, `ArtifactRef`, `StageInputs`, `StageOutput`, `Job`, `PipelineGraph`, `Report`, `ReportRequest`, `Person`; `Talk.speakers`, `Summary.human_edit`, `ReportVersion.conference_id`; у `Conference` и `Talk` нет `owner_id` и `version` | `src/rapporteur/contracts/` |
 | 2026-11-06 | папка доклада без номера (`Иванов/`, как в `data/`) создаёт доклад со следующим номером в секции | `backend/src/rapporteur_backend/materials.py` (P1-05) |

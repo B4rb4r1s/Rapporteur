@@ -91,6 +91,11 @@ CREATE TABLE IF NOT EXISTS report_versions (
     created_at TEXT NOT NULL,
     UNIQUE (conference_id, number)
 );
+-- Настройки, изменяемые из интерфейса: например, выбранная модель (model_choice.py).
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS talks_job ON talks (job, queued_at);
 CREATE INDEX IF NOT EXISTS files_talk ON files (talk_id);
 """

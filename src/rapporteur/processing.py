@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
-from rapporteur import db
+from rapporteur import db, model_choice
 from rapporteur.contracts import (
     FactsArtifact,
     ModelProfile,
@@ -33,7 +33,6 @@ from rapporteur.ingest import notes as notes_parser
 from rapporteur.ingest import slides as slides_parser
 from rapporteur.ingest.limits import NotesConfig, PresentationConfig
 from rapporteur.llm.client import LlmClient
-from rapporteur.llm.profiles import load_profile
 from rapporteur.storage import Storage, blob_key, cache_key
 from rapporteur.summarize import facts as facts_step
 from rapporteur.summarize import summary as summary_step
@@ -175,7 +174,9 @@ class Processor:
 
     def _process(self, talk: _Talk) -> tuple[Summary, TalkFragmentPack]:
         pack = self._pack(talk)
-        profile = load_profile()
+        # Модель — выбранная на странице «Управление» или профиль по умолчанию.
+        with self.database.tx() as conn:
+            profile = model_choice.active_profile(conn)
 
         self._step(talk.id, "facts")
         facts_config = facts_step.FactsConfig(profile=profile)
