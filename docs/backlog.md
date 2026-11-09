@@ -374,6 +374,8 @@
 
 | Дата | Что изменилось | Где |
 | --- | --- | --- |
+| 2026-11-09 | ADR-014: один пакет `rapporteur`, один `compose.yaml` (`app` и `ollama`), SQLite вместо PostgreSQL, обработка докладов фоновым потоком приложения вместо очереди, графа, планировщика и двух воркеров; без режима dev и заглушек; без ETag; справка собирается в запросе; удалены генерация JSON Schema и TS-типов и CLI `make report` | ADR-014, spec §8, §11, §14, `docs/api.md`, `CODEOWNERS` |
+| 2026-11-09 | контракты без `ArtifactMeta`, `ArtifactRef`, `StageInputs`, `StageOutput`, `Job`, `PipelineGraph`, `Report`, `ReportRequest`, `Person`; `Talk.speakers`, `Summary.human_edit`, `ReportVersion.conference_id`; у `Conference` и `Talk` нет `owner_id` и `version` | `src/rapporteur/contracts/` |
 | 2026-11-06 | папка доклада без номера (`Иванов/`, как в `data/`) создаёт доклад со следующим номером в секции | `backend/src/rapporteur_backend/materials.py` (P1-05) |
 | 2026-11-06 | удаление конференции отменяет её задачи в очереди; `GET /system` для страницы управления | `docs/api.md`, `backend/src/rapporteur_backend/system_routes.py` |
 | 2026-11-06 | команда 1 ведёт backend и интерфейс сводок и справки; докладчики в реестре — К2 · B | ADR-013, «Кто что делает» |

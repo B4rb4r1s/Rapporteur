@@ -2,21 +2,22 @@ import { useEffect, useState } from 'react';
 
 import { request, statusTone } from './Materials';
 
-type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'retry_wait';
+type Job = 'queued' | 'running' | 'done' | 'failed';
 export type TalkProgress = {
   id: string;
   section: string;
   order: number;
   title: string | null;
   status: string;
-  stages: Partial<Record<'pack' | 'facts' | 'verify' | 'summary', JobStatus>>;
-  error_code: string | null;
+  job: Job | null;
+  step: 'parse' | 'facts' | 'verify' | 'summary' | null;
+  error: string | null;
   summary_number: number | null;
   summary_status: 'ready' | 'needs_attention' | 'stale' | null;
 };
 export type Progress = {
   processing_started: boolean;
-  stages: Record<string, Partial<Record<JobStatus, number>>>;
+  files: number;
   talks: TalkProgress[];
 };
 
@@ -29,36 +30,22 @@ export const talkStatuses: Record<string, string> = {
   stale: 'Требуется обновление',
   not_held: 'Не состоялся',
 };
-const jobStatuses: Record<JobStatus, string> = {
-  queued: 'в очереди',
-  running: 'идёт',
-  succeeded: 'готово',
-  failed: 'ошибка',
-  cancelled: 'отменено',
-  retry_wait: 'повтор',
+const steps: Record<string, string> = {
+  parse: 'разбор материалов',
+  facts: 'факты и цитаты',
+  verify: 'сверка цитат',
+  summary: 'текст сводки',
 };
-const jobTone: Record<JobStatus, string> = {
-  queued: '',
-  running: 'info',
-  succeeded: 'ok',
-  failed: 'bad',
-  cancelled: '',
-  retry_wait: 'warn',
-};
-const steps = [
-  ['pack', 'Пакет'],
-  ['facts', 'Факты'],
-  ['verify', 'Сверка'],
-  ['summary', 'Сводка'],
-] as const;
-const fileStages = [['inventory', 'Опись'], ['slides', 'Слайды'], ['notes', 'Заметки']] as const;
 const POLL_MS = 5000;
 
-function counts(byStatus: Partial<Record<JobStatus, number>> | undefined) {
-  if (!byStatus) return null;
-  const total = Object.values(byStatus).reduce((sum, value) => sum + (value ?? 0), 0);
-  const failed = byStatus.failed ? `, ошибок ${byStatus.failed}` : '';
-  return `${byStatus.succeeded ?? 0} из ${total}${failed}`;
+function jobLabel(talk: TalkProgress) {
+  switch (talk.job) {
+    case 'queued': return ['в очереди', ''];
+    case 'running': return [talk.step ? steps[talk.step] : 'идёт', 'info'];
+    case 'done': return ['готово', 'ok'];
+    case 'failed': return ['ошибка', 'bad'];
+    default: return null;
+  }
 }
 
 export function Processing(
@@ -66,6 +53,7 @@ export function Processing(
 ) {
   const [progress, setProgress] = useState<Progress>();
   const [error, setError] = useState('');
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -86,7 +74,16 @@ export function Processing(
       clearInterval(timer);
       controller.abort();
     };
-  }, [conferenceId]);
+  }, [conferenceId, tick]);
+
+  async function retry(talk: TalkProgress) {
+    try {
+      await request(`/api/v1/talks/${talk.id}/retry`, { method: 'POST' });
+      setTick((value) => value + 1);
+    } catch (reason) {
+      setError((reason as Error).message);
+    }
+  }
 
   const ready = progress?.talks.filter((talk) => talk.summary_number !== null).length ?? 0;
   return (
@@ -109,9 +106,7 @@ export function Processing(
       {progress && (
         <>
           <div className="kv">
-            {fileStages.filter(([stage]) => progress.stages[stage]).map(([stage, label]) => (
-              <div key={stage}><b>{label}</b>{counts(progress.stages[stage])}</div>
-            ))}
+            <div><b>Файлы</b>{progress.files}</div>
             <div><b>Сводки</b>{ready} из {progress.talks.length}</div>
           </div>
           <div className="row">
@@ -126,39 +121,38 @@ export function Processing(
               <tr>
                 <th scope="col">Доклад</th>
                 <th scope="col">Статус</th>
-                {steps.map(([, label]) => <th key={label} scope="col">{label}</th>)}
+                <th scope="col">Обработка</th>
                 <th scope="col"><span hidden>Действие</span></th>
               </tr>
             </thead>
             <tbody>
-              {progress.talks.map((talk) => (
-                <tr key={talk.id}>
-                  <th scope="row">{talk.section} · {talk.order}. {talk.title ?? 'Без названия'}</th>
-                  <td>
-                    <span className={`pill ${statusTone[talk.status] ?? ''}`}>{talkStatuses[talk.status] ?? talk.status}</span>
-                    {talk.summary_status === 'needs_attention' && <><br /><small>Сводка требует внимания</small></>}
-                    {talk.error_code && <><br /><small>Ошибка: {talk.error_code}</small></>}
-                  </td>
-                  {steps.map(([stage]) => {
-                    const job = talk.stages[stage];
-                    return (
-                      <td key={stage}>
-                        {job ? (
-                          <span className={`pill ${jobTone[job]}`}>
-                            {job === 'running' && <span className="spinner" aria-hidden="true" />}
-                            {jobStatuses[job]}
-                          </span>
-                        ) : <span className="muted">—</span>}
-                      </td>
-                    );
-                  })}
-                  <td>
-                    <button disabled={talk.summary_number === null} onClick={() => onOpen(talk)}>
-                      Открыть сводку
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {progress.talks.map((talk) => {
+                const job = jobLabel(talk);
+                return (
+                  <tr key={talk.id}>
+                    <th scope="row">{talk.section} · {talk.order}. {talk.title ?? 'Без названия'}</th>
+                    <td>
+                      <span className={`pill ${statusTone[talk.status] ?? ''}`}>{talkStatuses[talk.status] ?? talk.status}</span>
+                      {talk.summary_status === 'needs_attention' && <><br /><small>Сводка требует внимания</small></>}
+                    </td>
+                    <td>
+                      {job ? (
+                        <span className={`pill ${job[1]}`}>
+                          {talk.job === 'running' && <span className="spinner" aria-hidden="true" />}
+                          {job[0]}
+                        </span>
+                      ) : <span className="muted">—</span>}
+                      {talk.error && <><br /><small>{talk.error}</small></>}
+                    </td>
+                    <td className="row">
+                      <button disabled={talk.summary_number === null} onClick={() => onOpen(talk)}>
+                        Открыть сводку
+                      </button>
+                      {talk.job === 'failed' && <button onClick={() => void retry(talk)}>Повторить</button>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           </div>

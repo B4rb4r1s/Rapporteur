@@ -1,96 +1,54 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import type { ConferenceItem } from './Home';
 import { request } from './Materials';
 import type { Progress } from './Processing';
 
-type ConferenceFull = {
-  id: string;
-  title: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  place: string | null;
-  organizer: string | null;
-};
-type Report = { id: string; selection: { talk_ids: string[] } };
 type ReportVersion = {
   id: string;
   number: number;
   created_at: string;
   files: { format: 'docx' | 'md' | 'pdf' }[];
   variables: { talks_count: number };
+  warnings: string[];
 };
 const json = { 'Content-Type': 'application/json' };
 const formats: Record<string, string> = { docx: 'DOCX', md: 'Markdown', pdf: 'PDF' };
-const POLL_MS = 3000;
 
 export function ReportPanel({ conferenceId }: { conferenceId: string }) {
   const base = `/api/v1/conferences/${conferenceId}`;
-  const [conference, setConference] = useState<{ value: ConferenceFull; etag: string }>();
+  const [conference, setConference] = useState<ConferenceItem>();
   const [dates, setDates] = useState({ start: '', end: '', place: '' });
-  const [report, setReport] = useState<Report | null>();
+  const [talks, setTalks] = useState(0);
   const [versions, setVersions] = useState<ReportVersion[]>([]);
-  const [talkIds, setTalkIds] = useState<string[]>([]);
   const [confirmed, setConfirmed] = useState(false);
-  const [waiting, setWaiting] = useState('');
   const [busy, setBusy] = useState('');
   const [status, setStatus] = useState('');
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState('');
-
-  const loadVersions = useCallback(async (reportId: string) => {
-    const response = await request(`/api/v1/reports/${reportId}/versions?limit=20`);
-    const page: { items: ReportVersion[] } = await response.json();
-    setVersions(page.items);
-    return page.items;
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
       const signal = controller.signal;
-      const conferenceResponse = await request(base, { signal });
-      const value: ConferenceFull = await conferenceResponse.json();
-      setConference({ value, etag: conferenceResponse.headers.get('ETag') ?? '' });
+      const value: ConferenceItem = await (await request(base, { signal })).json();
+      setConference(value);
       setDates({ start: value.start_date ?? '', end: value.end_date ?? '', place: value.place ?? '' });
       const progress: Progress = await (await request(`${base}/progress`, { signal })).json();
-      setTalkIds(progress.talks.map((talk) => talk.id));
-      const reports: { items: Report[] } = await (await request(`${base}/reports?limit=1`, { signal })).json();
-      const current = reports.items[0] ?? null;
-      setReport(current);
-      if (current) await loadVersions(current.id);
+      setTalks(progress.talks.length);
+      setVersions(await (await request(`${base}/reports`, { signal })).json());
     }
     void load().catch((reason: Error) => {
       if (!controller.signal.aborted) setError(reason.message);
     });
     return () => controller.abort();
-  }, [base, loadVersions]);
-
-  // Ждём, пока задача сборки закончится и планировщик перенесёт версию в БД.
-  useEffect(() => {
-    if (!waiting || !report) return;
-    const known = versions.length;
-    const timer = setInterval(() => {
-      void (async () => {
-        const job: { status: string; error_code: string | null } = await (await request(waiting)).json();
-        if (job.status === 'failed' || job.status === 'cancelled') {
-          setWaiting('');
-          setStatus('');
-          setError(`Справка не собрана: ${job.error_code ?? job.status}`);
-          return;
-        }
-        const items = await loadVersions(report.id);
-        if (items.length > known) {
-          setWaiting('');
-          setStatus(`Собрана версия ${items[0].number}.`);
-        }
-      })().catch((reason: Error) => setError(reason.message));
-    }, POLL_MS);
-    return () => clearInterval(timer);
-  }, [waiting, report, versions.length, loadVersions]);
+  }, [base]);
 
   async function run(label: string, action: () => Promise<void>) {
     setBusy(label);
     setError('');
     setStatus('');
+    setWarnings([]);
     try {
       await action();
     } catch (reason) {
@@ -105,52 +63,42 @@ export function ReportPanel({ conferenceId }: { conferenceId: string }) {
     void run('Сохранение…', async () => {
       const response = await request(base, {
         method: 'PUT',
-        headers: { ...json, 'If-Match': conference.etag },
+        headers: json,
         body: JSON.stringify({
-          title: conference.value.title,
+          title: conference.title,
           start_date: dates.start || null,
           end_date: dates.end || dates.start || null,
           place: dates.place.trim() || null,
-          organizer: conference.value.organizer,
+          organizer: conference.organizer,
         }),
       });
-      setConference({ value: await response.json(), etag: response.headers.get('ETag') ?? '' });
+      setConference(await response.json());
       setStatus('Сведения о конференции сохранены.');
     });
   }
 
-  function createReport() {
-    void run('Создание…', async () => {
-      const response = await request(`${base}/reports`, {
-        method: 'POST',
-        headers: json,
-        body: JSON.stringify({ selection: { days: [], section_ids: [], talk_ids: talkIds } }),
-      });
-      setReport(await response.json());
-      setVersions([]);
-    });
-  }
-
   function build() {
-    if (!report) return;
-    void run('Постановка сборки…', async () => {
-      const response = await request(`/api/v1/reports/${report.id}/build`, {
+    // DOCX по бланку и PDF через LibreOffice собираются за несколько секунд прямо в запросе.
+    void run('Справка собирается…', async () => {
+      const response = await request(`${base}/reports`, {
         method: 'POST',
         headers: json,
         body: JSON.stringify({ unreviewed_confirmed: confirmed }),
       });
-      const accepted: { status_url: string } = await response.json();
-      setWaiting(accepted.status_url);
-      setStatus('Справка собирается…');
+      const version: ReportVersion = await response.json();
+      setVersions((previous) => [version, ...previous]);
+      setStatus(`Собрана версия ${version.number}.`);
+      setWarnings(version.warnings);
     });
   }
 
   return (
-    <section aria-labelledby="report-title" aria-busy={!!busy || !!waiting}>
+    <section aria-labelledby="report-title" aria-busy={!!busy}>
       <div className="card">
         <h2 id="report-title">Справка</h2>
-        <p role="status">{waiting && <span className="spinner" aria-hidden="true" />}{busy || status}</p>
+        <p role="status">{busy && <span className="spinner" aria-hidden="true" />}{busy || status}</p>
         {error && <p role="alert">{error}</p>}
+        {!!warnings.length && <ul className="muted">{warnings.map((item) => <li key={item}>{item}</li>)}</ul>}
         {conference && (
           <form onSubmit={(event) => { event.preventDefault(); saveDates(); }}>
             <fieldset>
@@ -167,7 +115,7 @@ export function ReportPanel({ conferenceId }: { conferenceId: string }) {
                 </label>
                 <button disabled={!!busy} style={{ alignSelf: 'end' }}>Сохранить</button>
               </div>
-              {!conference.value.start_date && (
+              {!conference.start_date && (
                 <p className="pill warn" style={{ marginTop: '.8rem' }}>
                   Без дат в справке не будет периода проведения, сборка не пройдёт.
                 </p>
@@ -176,48 +124,39 @@ export function ReportPanel({ conferenceId }: { conferenceId: string }) {
           </form>
         )}
       </div>
-      {report === null && (
-        <div className="card">
-          <button className="primary" disabled={!!busy || !talkIds.length} onClick={createReport}>
-            Создать справку по всем докладам
-          </button>
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Сборка</h3>
+        <p className="muted">
+          В справку идут все доклады конференции ({talks}). Доклады без готовой сводки в неё не войдут.
+        </p>
+        <div className="row">
+          <button className="primary" disabled={!!busy || !talks} onClick={build}>Собрать справку</button>
+          <label className="check">
+            <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />
+            Собрать, даже если не все сводки проверены
+          </label>
         </div>
-      )}
-      {report && (
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Сборка</h3>
-          <p className="muted">
-            В справке докладов: {report.selection.talk_ids.length}. Доклады без готовой сводки в неё не войдут.
-          </p>
-          <div className="row">
-            <button className="primary" disabled={!!busy || !!waiting} onClick={build}>Собрать справку</button>
-            <label className="check">
-              <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />
-              Собрать, даже если не все сводки проверены
-            </label>
-          </div>
-          <h3>Версии</h3>
-          {versions.length > 0 ? (
-            <ul className="versions">
-              {versions.map((version) => (
-                <li key={version.id}>
-                  <b>Версия {version.number}</b>{' '}
-                  <span className="muted">
-                    от {new Date(version.created_at).toLocaleString('ru-RU')}, докладов {version.variables.talks_count}
-                  </span>{' '}
-                  <span className="files">
-                    {version.files.map((file) => (
-                      <a key={file.format} className="pill info" href={`/api/v1/report-versions/${version.id}/files/${file.format}`}>
-                        {formats[file.format]}
-                      </a>
-                    ))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="muted">Собранных версий пока нет.</p>}
-        </div>
-      )}
+        <h3>Версии</h3>
+        {versions.length > 0 ? (
+          <ul className="versions">
+            {versions.map((version) => (
+              <li key={version.id}>
+                <b>Версия {version.number}</b>{' '}
+                <span className="muted">
+                  от {new Date(version.created_at).toLocaleString('ru-RU')}, докладов {version.variables.talks_count}
+                </span>{' '}
+                <span className="files">
+                  {version.files.map((file) => (
+                    <a key={file.format} className="pill info" href={`/api/v1/report-versions/${version.id}/files/${file.format}`}>
+                      {formats[file.format]}
+                    </a>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="muted">Собранных версий пока нет.</p>}
+      </div>
     </section>
   );
 }

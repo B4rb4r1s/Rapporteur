@@ -62,11 +62,8 @@ export async function request(path: string, init?: RequestInit) {
   return response;
 }
 
-async function readReview(response: Response) {
-  const etag = response.headers.get('ETag');
-  if (!etag) throw new Error('Сервер не вернул версию привязок');
-  const review: Review = await response.json();
-  return { review, etag };
+async function readReview(response: Response): Promise<Review> {
+  return response.json();
 }
 
 function selectionFor(file: Material) {
@@ -79,7 +76,7 @@ export function Materials(
   { conferenceId, onStarted }: { conferenceId: string; onStarted?: () => void },
 ) {
   const base = `/api/v1/conferences/${conferenceId}`;
-  const [snapshot, setSnapshot] = useState<{ review: Review; etag: string }>();
+  const [review, setReview] = useState<Review>();
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState('');
   const [status, setStatus] = useState('');
@@ -91,7 +88,7 @@ export function Materials(
     const controller = new AbortController();
     void request(`${base}/materials`, { signal: controller.signal })
       .then(readReview)
-      .then(setSnapshot)
+      .then(setReview)
       .catch((error: Error) => {
         if (!controller.signal.aborted) setErrors([error.message]);
       });
@@ -99,7 +96,7 @@ export function Materials(
   }, [base]);
 
   async function reload() {
-    setSnapshot(await readReview(await request(`${base}/materials`)));
+    setReview(await readReview(await request(`${base}/materials`)));
     setChoices({});
   }
 
@@ -148,21 +145,21 @@ export function Materials(
   }
 
   async function save() {
-    if (!snapshot) return;
+    if (!review) return;
     setBusy('Сохранение…');
     setErrors([]);
     setStatus('');
     try {
-      const bindings = snapshot.review.files.map((file) => ({
+      const bindings = review.files.map((file) => ({
         source_file_id: file.source.id,
         talk_id: (choices[file.source.id] ?? selectionFor(file)) || null,
       }));
       const response = await request(`${base}/materials/bindings`, {
         method: 'PUT',
-        headers: { ...json, 'If-Match': snapshot.etag },
+        headers: json,
         body: JSON.stringify({ bindings }),
       });
-      setSnapshot(await readReview(response));
+      setReview(await readReview(response));
       setChoices({});
       setStatus('Привязки сохранены.');
     } catch (reason) {
@@ -184,9 +181,7 @@ export function Materials(
     setBusy('Запуск обработки…');
     try {
       await request(`${base}/processing`, { method: 'POST' });
-      setSnapshot((previous) => previous && ({
-        ...previous, review: { ...previous.review, processing_started: true },
-      }));
+      setReview((previous) => previous && { ...previous, processing_started: true });
       setStatus('Обработка запрошена.');
       onStarted?.();
     } catch (reason) {
@@ -197,31 +192,19 @@ export function Materials(
   }
 
   async function addTalk() {
-    if (!snapshot || !talkTitle.trim()) return;
+    if (!review || !talkTitle.trim()) return;
     setErrors([]);
     setStatus('');
     setBusy('Добавление доклада…');
     try {
-      let section = snapshot.review.sections.find(({ id }) => id === sectionId)
-        ?? snapshot.review.sections[0];
-      if (!section) {
-        const response = await request(`${base}/sections`, {
-          method: 'POST',
-          headers: json,
-          body: JSON.stringify({ title: 'Основная секция', order: 1 }),
-        });
-        section = await response.json() as Section;
-      }
-      const order = snapshot.review.talks
-        .filter((talk) => talk.section_id === section.id)
-        .reduce((maximum, talk) => Math.max(maximum, talk.order), 0) + 1;
-      await request(`/api/v1/sections/${section.id}/talks`, {
+      const section = review.sections.find(({ id }) => id === sectionId) ?? review.sections[0];
+      const response = await request(`${base}/talks`, {
         method: 'POST',
         headers: json,
-        body: JSON.stringify({ title: talkTitle.trim(), order }),
+        body: JSON.stringify({ title: talkTitle.trim(), section_id: section?.id ?? null }),
       });
       setTalkTitle('');
-      setSnapshot(await readReview(await request(`${base}/materials`)));
+      setReview(await readReview(response));
       setStatus('Доклад добавлен.');
     } catch (reason) {
       setErrors([(reason as Error).message]);
@@ -230,9 +213,9 @@ export function Materials(
     }
   }
 
-  const files = snapshot?.review.files ?? [];
-  const talks = snapshot?.review.talks ?? [];
-  const sections = snapshot?.review.sections ?? [];
+  const files = review?.files ?? [];
+  const talks = review?.talks ?? [];
+  const sections = review?.sections ?? [];
   const materials = files.filter((file) => file.source.kind !== 'program');
   const unconfirmed = materials.some((file) => !file.binding.confirmed);
   const bound = materials.filter((file) => file.binding.confirmed && file.binding.talk_id).length;
@@ -265,7 +248,7 @@ export function Materials(
       </div>
       <p role="status">{busy || status}</p>
       {!!errors.length && <ul role="alert">{errors.map((message, index) => <li key={index}>{message}</li>)}</ul>}
-      {snapshot && (
+      {review && (
         <form className="row" onSubmit={(event) => { event.preventDefault(); void addTalk(); }}>
           <label className="field">
             <span>Название доклада</span>
@@ -348,9 +331,9 @@ export function Materials(
           ))}</ul>
         </>
       )}
-      {snapshot && <p><a href={`${base}/conference.yaml`}>Скачать conference.yaml</a></p>}
+      {review && <p><a href={`${base}/conference.yaml`}>Скачать conference.yaml</a></p>}
       {warning && <p className="notice">{warning}</p>}
-      {snapshot?.review.processing_started
+      {review?.processing_started
         ? (
           <p className="row">
             <span className="pill ok">Обработка запущена</span>

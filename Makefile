@@ -1,55 +1,67 @@
-# Проверки всего репозитория. Нужны только Docker и make; CI нет (ADR-011),
-# поэтому make check запускается перед каждым слиянием в main.
-DIRS := contracts pipeline backend frontend workers
-.DEFAULT_GOAL := check
-PROFILE ?= dev
-ifeq ($(PROFILE),gpu)
-GPU_COMPOSE := -f "$(CURDIR)/deploy/compose.gpu.yaml"
-else ifneq ($(PROFILE),dev)
-$(error PROFILE должен быть dev или gpu)
-endif
-COMPOSE := docker compose --env-file "$(CURDIR)/.env" -f "$(CURDIR)/deploy/compose.yaml" $(GPU_COMPOSE) --profile $(PROFILE)
+# Все команды идут через Docker Compose: на машине нужны только Docker и make.
+# CI нет (ADR-011): make check запускается перед каждым слиянием в main.
+export HOST_UID := $(shell id -u)
+export HOST_GID := $(shell id -g)
 
-.PHONY: check lint test eval up down ps logs config migrate smoke
+COMPOSE := docker compose
+DEV := $(COMPOSE) run --rm --build dev
+WEB := $(COMPOSE) run --rm --build web-dev
+PYTHON_IMAGE := python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159
+NODE_IMAGE := node:22-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da
+# Только версии npm старше двух недель на момент блокировки; дату сдвигать вместе с make lock.
+NPM_BEFORE := 2026-10-20
 
-## Явный шаг миграции очереди, выполняемый один раз перед запуском процессов
-migrate:
-	$(COMPOSE) up --detach --wait --wait-timeout 120 db
-	$(COMPOSE) run --rm --build backend-migrate
-	$(COMPOSE) run --rm --build migrate
+.DEFAULT_GOAL := help
+.PHONY: help up down ps logs config check lint test format pull lock
 
-## Dev без GPU или make up PROFILE=gpu с Ollama; ждёт healthchecks
-up: migrate
-	$(COMPOSE) up --build --detach --wait --wait-timeout 120
+help:
+	@grep -E '^## ' Makefile | sed 's/^## //'
 
-## Два задания с заглушками проходят через CPU- и GPU-воркер; только профиль dev
-smoke:
-	@test "$(PROFILE)" = dev || { echo "smoke разрешён только в dev" >&2; exit 2; }
-	$(COMPOSE) run --rm cli smoke
+## make up      — собрать и запустить приложение и Ollama, http://127.0.0.1:8000
+up:
+	$(COMPOSE) up --build --detach --wait --wait-timeout 180
 
-## Остановка сохраняет том PostgreSQL
+## make down    — остановить; база, материалы и справки остаются в томе data
 down:
 	$(COMPOSE) down
 
+## make ps      — состояние сервисов
 ps:
 	$(COMPOSE) ps
 
+## make logs    — журнал приложения и Ollama
 logs:
 	$(COMPOSE) logs --follow
 
-## Проверка без вывода пароля из подставленного окружения
+## make config  — проверить compose.yaml и .env без запуска
 config:
 	$(COMPOSE) config --quiet
 
-## Все проверки всех каталогов; останавливается на первом сбое
-check:
-	@for d in $(DIRS); do echo "== $$d"; $(MAKE) -C $$d check || exit 1; done
+## make check   — линтеры, типы, тесты и сборка фронтенда в контейнерах
+check: lint test
 
 lint:
-	@for d in $(DIRS); do echo "== $$d"; $(MAKE) -C $$d lint || exit 1; done
+	$(DEV) sh -c 'ruff check . && ruff format --check . && mypy'
+	$(WEB) sh -c 'eslint . && tsc -p tsconfig.json'
 
 test:
-	@for d in $(DIRS); do echo "== $$d"; $(MAKE) -C $$d test || exit 1; done
+	$(DEV) pytest
+	$(WEB) sh -c 'vitest run && vite build --outDir /tmp/dist --emptyOutDir'
 
-eval:
-	@echo "make eval появится в P1-09 (docs/backlog.md)" >&2; exit 1
+## make format  — поправить стиль Python
+format:
+	$(DEV) sh -c 'ruff check --fix . && ruff format .'
+
+## make pull MODEL=qwen3.5:9b — скачать модель в OLLAMA_MODELS_DIR (нужен интернет)
+pull:
+	@test -n "$(MODEL)" || { echo "укажите MODEL" >&2; exit 2; }
+	$(COMPOSE) run --rm pull $(MODEL)
+
+## make lock    — обновить uv.lock и package-lock.json после правки зависимостей
+lock:
+	docker run --rm --user $(HOST_UID):$(HOST_GID) -e HOME=/tmp -e UV_CACHE_DIR=/tmp/uv-cache \
+	  -v $(CURDIR):/app -w /app $(PYTHON_IMAGE) \
+	  sh -c 'pip install --quiet --no-cache-dir --user uv==0.9.5 && /tmp/.local/bin/uv lock'
+	docker run --rm --user $(HOST_UID):$(HOST_GID) -e HOME=/tmp \
+	  -v $(CURDIR)/frontend:/app -w /app $(NODE_IMAGE) \
+	  npm install --package-lock-only --ignore-scripts --no-audit --no-fund --before=$(NPM_BEFORE)

@@ -1,9 +1,0 @@
-{
-  "name": "rapporteur-contracts-ts",
-  "private": true,
-  "type": "module",
-  "devDependencies": {
-    "json-schema-to-typescript": "15.0.4",
-    "typescript": "5.9.3"
-  }
-}

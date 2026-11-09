@@ -1,0 +1,127 @@
+# Весь «Репортёр» — один compose (ADR-014): приложение и Ollama. Команды — в Makefile.
+#
+# Сеть internal без выхода наружу: приложение ходит только в Ollama, Ollama — никуда (spec §2).
+# Порт приложения публикуется через сеть edge без NAT: входящие подключения работают,
+# исходящий трафик в другие сети не возвращается.
+name: rapporteur
+
+x-ollama: &ollama
+  image: ollama/ollama:0.40.13@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429
+  user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+  gpus: all
+  environment:
+    HOME: /tmp
+    OLLAMA_HOST: 0.0.0.0:11434
+    OLLAMA_MODELS: /models
+    OLLAMA_NO_CLOUD: "1"
+    OLLAMA_NOPRUNE: "1"
+    OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-32768}
+    OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
+    OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+
+services:
+  app:
+    build:
+      context: .
+      target: app
+    image: rapporteur:local
+    restart: unless-stopped
+    environment:
+      OLLAMA_URL: http://ollama:11434
+    ports:
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8000}:8000"
+    volumes: [data:/data]
+    networks: [internal, edge]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  # Модели лежат во внешнем каталоге OLLAMA_MODELS_DIR (blobs/ и manifests/) и подключаются
+  # только на чтение (ADR-010). Ollama при старте переносит манифесты в manifests-v2, поэтому
+  # манифесты (килобайты) копируются в память контейнера, а веса подключаются ссылкой.
+  ollama:
+    <<: *ollama
+    restart: unless-stopped
+    networks: [internal]
+    volumes:
+      - type: bind
+        source: ${OLLAMA_MODELS_DIR:-./OLLAMA_MODELS_DIR-not-set}
+        target: /models-source
+        read_only: true
+    tmpfs:
+      - /models:uid=${HOST_UID:-1000},gid=${HOST_GID:-1000},mode=0700
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        if [ ! -d /models-source/blobs ]; then
+          echo "В OLLAMA_MODELS_DIR нет blobs/: укажите каталог с blobs и manifests" >&2
+          exit 1
+        fi
+        ln -s /models-source/blobs /models/blobs
+        for name in manifests manifests-v2; do
+          if [ -d "/models-source/$$name" ]; then cp -R "/models-source/$$name" /models/; fi
+        done
+        exec ollama serve
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+
+  # Скачать модель в OLLAMA_MODELS_DIR на машине с интернетом: make pull MODEL=qwen3.5:9b.
+  # Каталог должен быть доступен на запись пользователю HOST_UID.
+  pull:
+    <<: *ollama
+    profiles: [tools]
+    networks: [egress]
+    volumes:
+      - type: bind
+        source: ${OLLAMA_MODELS_DIR:-./OLLAMA_MODELS_DIR-not-set}
+        target: /models
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 3; ollama pull \"$0\""]
+
+  # Проверки Python: make check. Исходники с хоста, сети нет.
+  dev:
+    build:
+      context: .
+      target: dev
+    image: rapporteur-dev:local
+    profiles: [tools]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    network_mode: none
+    volumes: [".:/app"]
+
+  # Проверки и сборка фронтенда: make check.
+  web-dev:
+    build:
+      context: .
+      target: web-deps
+    image: rapporteur-web-dev:local
+    profiles: [tools]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    network_mode: none
+    volumes: ["./frontend:/app/frontend"]
+
+networks:
+  internal:
+    internal: true
+  edge:
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+  egress: {}
+
+volumes:
+  data:
